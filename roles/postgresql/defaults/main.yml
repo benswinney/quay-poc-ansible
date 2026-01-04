@@ -6,8 +6,8 @@
 postgresql_data_dir: "{{ quay_base_dir }}/postgres"
 
 # PostgreSQL container UID (varies by distribution)
-# Alpine-based: 70, RHEL-based: 26
-postgresql_uid: 26
+# Alpine-based (project): 70, RHEL-based: 26
+postgresql_uid: "{{ 70 if quay_distribution == 'project' else 26 }}"
 
 # Health check settings
 postgresql_health_check_retries: 30
