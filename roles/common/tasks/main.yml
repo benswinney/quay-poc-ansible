@@ -19,14 +19,13 @@
       - "'example.com' not in quay_hostname"
     fail_msg: |
       ❌ Invalid hostname configuration!
-      
+
       The hostname '{{ quay_hostname | default("undefined") }}' appears to be a placeholder.
       Please set a valid hostname in inventory/group_vars/all/main.yml
-      
+
       Example:
         quay_hostname: quay.mycompany.com
     success_msg: "✓ Hostname validated: {{ quay_hostname }}"
-    success_msg: "Target system validated: {{ ansible_distribution }} {{ ansible_distribution_version }}"
 
 - name: Install required packages
   ansible.builtin.dnf:
@@ -36,9 +35,9 @@
 - name: Enable container-tools module
   ansible.builtin.command:
     cmd: dnf module enable -y {{ common_container_tools_module }}
-  register: module_enable
-  changed_when: "'Enabling' in module_enable.stdout"
-  failed_when: module_enable.rc != 0 and 'already enabled' not in module_enable.stderr
+  register: common_module_enable
+  changed_when: "'Enabling' in common_module_enable.stdout"
+  failed_when: common_module_enable.rc != 0 and 'already enabled' not in common_module_enable.stderr
 
 - name: Ensure firewalld is running
   ansible.builtin.systemd:
@@ -100,7 +99,7 @@
     - vault_registry_username is defined
     - vault_registry_password is defined
   no_log: true
-  ignore_errors: true
+  failed_when: false
 
 - name: Install required Python packages for Ansible modules
   ansible.builtin.pip:
