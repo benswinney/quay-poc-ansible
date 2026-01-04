@@ -6,10 +6,13 @@
 # including PostgreSQL, Redis, and optional Clair and Mirror components.
 #
 # Usage:
-#   ansible-playbook playbooks/site.yml --ask-vault-pass
+#   ansible-playbook playbooks/site.yml --ask-vault-pass --ask-become-pass
 #
 # To deploy only specific components:
-#   ansible-playbook playbooks/site.yml --tags postgresql,redis,quay
+#   ansible-playbook playbooks/site.yml --tags postgresql,redis,quay --ask-become-pass
+#
+# Note: --ask-become-pass (-K) prompts for the sudo password on target hosts.
+#       Omit if your target user has passwordless sudo configured.
 #
 # Available tags: common, postgresql, redis, quay, clair, mirror
 - name: Pre-flight validation checks

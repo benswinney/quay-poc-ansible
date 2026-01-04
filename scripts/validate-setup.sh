@@ -138,7 +138,7 @@ if [ $ERRORS -eq 0 ] && [ $WARNINGS -eq 0 ]; then
     echo -e "${GREEN}✓ All checks passed!${NC}"
     echo ""
     echo "You can now run the playbook with:"
-    echo "  ansible-playbook playbooks/site.yml --ask-vault-pass"
+    echo "  ansible-playbook playbooks/site.yml --ask-vault-pass --ask-become-pass"
     exit 0
 elif [ $ERRORS -eq 0 ]; then
     echo -e "${YELLOW}⚠ Validation completed with $WARNINGS warning(s)${NC}"

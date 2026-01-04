@@ -105,8 +105,10 @@ quay_ssl_mode: selfsigned
 ### 7. Run the Playbook
 
 ```bash
-ansible-playbook playbooks/site.yml --ask-vault-pass
+ansible-playbook playbooks/site.yml --ask-vault-pass --ask-become-pass
 ```
+
+> **Note:** `--ask-become-pass` (or `-K`) prompts for the sudo password on the target host. If your target user has passwordless sudo, you can omit this flag.
 
 ## Configuration Options
 
@@ -190,23 +192,23 @@ quay-poc-ansible/
 ### Deploy Everything
 
 ```bash
-ansible-playbook playbooks/site.yml --ask-vault-pass
+ansible-playbook playbooks/site.yml --ask-vault-pass --ask-become-pass
 ```
 
 ### Deploy Specific Components
 
 ```bash
 # Only deploy database and cache
-ansible-playbook playbooks/site.yml --tags postgresql,redis --ask-vault-pass
+ansible-playbook playbooks/site.yml --tags postgresql,redis --ask-vault-pass --ask-become-pass
 
 # Skip Clair
-ansible-playbook playbooks/site.yml --skip-tags clair --ask-vault-pass
+ansible-playbook playbooks/site.yml --skip-tags clair --ask-vault-pass --ask-become-pass
 ```
 
 ### Check Mode (Dry Run)
 
 ```bash
-ansible-playbook playbooks/site.yml --check --ask-vault-pass
+ansible-playbook playbooks/site.yml --check --ask-vault-pass --ask-become-pass
 ```
 
 ## Post-Deployment

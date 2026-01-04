@@ -22,7 +22,7 @@ Thank you for your interest in contributing to this project! This document provi
 4. **Test your changes**:
    - Run syntax check: `ansible-playbook playbooks/site.yml --syntax-check`
    - Run validation: `./scripts/validate-setup.sh`
-   - Test in check mode: `ansible-playbook playbooks/site.yml --check --ask-vault-pass`
+   - Test in check mode: `ansible-playbook playbooks/site.yml --check --ask-vault-pass --ask-become-pass`
    - Verify idempotency (run twice, second run should show no changes)
 5. **Commit your changes** using conventional commits format
 6. **Push to your fork**
@@ -97,7 +97,7 @@ Before submitting your PR, ensure:
 
 - [ ] **Syntax check passes**: `ansible-playbook playbooks/site.yml --syntax-check`
 - [ ] **Validation script passes**: `./scripts/validate-setup.sh`
-- [ ] **Check mode succeeds**: `ansible-playbook playbooks/site.yml --check`
+- [ ] **Check mode succeeds**: `ansible-playbook playbooks/site.yml --check --ask-become-pass`
 - [ ] **Tested on actual target host** (if possible)
 - [ ] **Idempotency verified**: Running playbook twice shows no changes on second run
 - [ ] **No vault.yml committed**: Only vault.yml.example should be in the repo
@@ -123,10 +123,10 @@ Your code should follow these patterns:
 ansible-playbook playbooks/site.yml --syntax-check
 
 # 2. Dry run (see what would change)
-ansible-playbook playbooks/site.yml --check --diff --ask-vault-pass
+ansible-playbook playbooks/site.yml --check --diff --ask-vault-pass --ask-become-pass
 
 # 3. Test specific role
-ansible-playbook playbooks/site.yml --tags postgresql --ask-vault-pass
+ansible-playbook playbooks/site.yml --tags postgresql --ask-vault-pass --ask-become-pass
 
 # 4. List all tasks
 ansible-playbook playbooks/site.yml --list-tasks
@@ -171,7 +171,7 @@ When adding a new component:
 - Never commit unencrypted `vault.yml` files
 - Always use vault variables for passwords and secrets
 - Keep `vault.yml.example` updated with placeholder values
-- Test with `--ask-vault-pass` flag
+- Test with `--ask-vault-pass` and `--ask-become-pass` flags
 
 ### Container Management
 

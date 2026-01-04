@@ -142,7 +142,7 @@ ansible-vault encrypt inventory/group_vars/all/vault.yml
 
 **8. Deploy**
 ```bash
-ansible-playbook playbooks/site.yml --ask-vault-pass
+ansible-playbook playbooks/site.yml --ask-vault-pass --ask-become-pass
 ```
 
 The playbook will display a deployment summary upon completion with access URLs and next steps.
@@ -153,14 +153,14 @@ The playbook will display a deployment summary upon completion with access URLs 
 
 ```bash
 # Full deployment
-ansible-playbook playbooks/site.yml --ask-vault-pass
+ansible-playbook playbooks/site.yml --ask-vault-pass --ask-become-pass
 
 # Deploy specific components
-ansible-playbook playbooks/site.yml --tags postgresql,redis,quay --ask-vault-pass
-ansible-playbook playbooks/site.yml --skip-tags clair --ask-vault-pass
+ansible-playbook playbooks/site.yml --tags postgresql,redis,quay --ask-vault-pass --ask-become-pass
+ansible-playbook playbooks/site.yml --skip-tags clair --ask-vault-pass --ask-become-pass
 
 # Dry run (check mode)
-ansible-playbook playbooks/site.yml --check --ask-vault-pass
+ansible-playbook playbooks/site.yml --check --ask-vault-pass --ask-become-pass
 ```
 
 ### Ansible Collections
@@ -268,10 +268,10 @@ curl -k http://<quay_hostname>:6060/health
 
 ```bash
 # Test configuration changes with dry run
-ansible-playbook playbooks/site.yml --check --diff --ask-vault-pass
+ansible-playbook playbooks/site.yml --check --diff --ask-vault-pass --ask-become-pass
 
 # Test specific component deployment
-ansible-playbook playbooks/site.yml --tags postgresql --check --ask-vault-pass
+ansible-playbook playbooks/site.yml --tags postgresql --check --ask-vault-pass --ask-become-pass
 
 # Verify generated configuration files on target
 sudo podman exec quay cat /conf/stack/config.yaml
@@ -326,22 +326,22 @@ ansible-playbook playbooks/site.yml --syntax-check
 **2. Dry Run (Check Mode)**
 ```bash
 # See what would change without applying
-ansible-playbook playbooks/site.yml --check --ask-vault-pass
+ansible-playbook playbooks/site.yml --check --ask-vault-pass --ask-become-pass
 
 # Include diff output to see exact changes
-ansible-playbook playbooks/site.yml --check --diff --ask-vault-pass
+ansible-playbook playbooks/site.yml --check --diff --ask-vault-pass --ask-become-pass
 ```
 
 **3. Test Specific Role**
 ```bash
 # Deploy only PostgreSQL
-ansible-playbook playbooks/site.yml --tags postgresql --ask-vault-pass
+ansible-playbook playbooks/site.yml --tags postgresql --ask-vault-pass --ask-become-pass
 
 # Deploy database components only
-ansible-playbook playbooks/site.yml --tags database,cache --ask-vault-pass
+ansible-playbook playbooks/site.yml --tags database,cache --ask-vault-pass --ask-become-pass
 
 # Skip Clair deployment
-ansible-playbook playbooks/site.yml --skip-tags clair --ask-vault-pass
+ansible-playbook playbooks/site.yml --skip-tags clair --ask-vault-pass --ask-become-pass
 ```
 
 **4. Validate Task Execution**
@@ -415,10 +415,10 @@ quay_enable_monitoring: false  # Add this
 ansible-playbook playbooks/site.yml --syntax-check
 
 # Dry run
-ansible-playbook playbooks/site.yml --tags monitoring --check --ask-vault-pass
+ansible-playbook playbooks/site.yml --tags monitoring --check --ask-vault-pass --ask-become-pass
 
 # Deploy
-ansible-playbook playbooks/site.yml --tags monitoring --ask-vault-pass
+ansible-playbook playbooks/site.yml --tags monitoring --ask-vault-pass --ask-become-pass
 ```
 
 ### Updating Container Versions
@@ -452,10 +452,10 @@ Then set `quay_distribution: custom` in `main.yml`.
 **Deploy Updated Versions**
 ```bash
 # Update specific component
-ansible-playbook playbooks/site.yml --tags quay --ask-vault-pass
+ansible-playbook playbooks/site.yml --tags quay --ask-vault-pass --ask-become-pass
 
 # Update all components
-ansible-playbook playbooks/site.yml --ask-vault-pass
+ansible-playbook playbooks/site.yml --ask-vault-pass --ask-become-pass
 ```
 
 **Verify Version Update**
@@ -478,7 +478,7 @@ sudo podman logs quay | head -20  # Check startup logs for version
 ansible-vault edit inventory/group_vars/all/vault.yml
 
 # Apply changes (requires container recreation)
-ansible-playbook playbooks/site.yml --ask-vault-pass
+ansible-playbook playbooks/site.yml --ask-vault-pass --ask-become-pass
 ```
 
 **For Template Changes** (config.yaml.j2, etc.):
@@ -868,7 +868,7 @@ Provided mode:
 - **Fix**: Ensure you're using the same password that was used to encrypt the vault
 - **Reset vault** (if password lost):
   ```bash
-  ansible-vault decrypt inventory/group_vars/all/vault.yml --ask-vault-pass
+  ansible-vault decrypt inventory/group_vars/all/vault.yml --ask-vault-pass --ask-become-pass
   # Enter old password
 
   ansible-vault encrypt inventory/group_vars/all/vault.yml
