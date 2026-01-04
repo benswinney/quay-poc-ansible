@@ -94,16 +94,16 @@
 - name: Verify SSL certificate exists
   ansible.builtin.stat:
     path: "{{ quay_config_dir }}/ssl.cert"
-  register: ssl_cert_stat
+  register: quay_ssl_cert_stat
 
 - name: Verify SSL key exists
   ansible.builtin.stat:
     path: "{{ quay_config_dir }}/ssl.key"
-  register: ssl_key_stat
+  register: quay_ssl_key_stat
 
 - name: Fail if SSL files are missing
   ansible.builtin.fail:
     msg: "SSL certificate or key not found. Check quay_ssl_mode configuration."
   when:
     - quay_ssl_mode != 'none'
-    - not (ssl_cert_stat.stat.exists and ssl_key_stat.stat.exists)
+    - not (quay_ssl_cert_stat.stat.exists and quay_ssl_key_stat.stat.exists)
