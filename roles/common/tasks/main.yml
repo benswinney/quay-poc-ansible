@@ -5,8 +5,8 @@
 - name: Validate RHEL 9 target system
   ansible.builtin.assert:
     that:
-      - ansible_distribution == "RedHat" or ansible_distribution == "CentOS" or ansible_distribution == "Rocky" or ansible_distribution == "AlmaLinux"
-      - ansible_distribution_major_version | int >= 9
+      - ansible_facts["distribution"] in ["RedHat", "CentOS", "Rocky", "AlmaLinux"]
+      - ansible_facts["distribution_major_version"] | int >= 9
     fail_msg: "This playbook requires RHEL 9 or compatible distribution"
 
 - name: Validate hostname configuration
@@ -32,20 +32,11 @@
     name: "{{ common_packages }}"
     state: present
 
-- name: Check container-tools module status
-  ansible.builtin.command:
-    cmd: dnf module list --enabled {{ common_container_tools_module }}
-  register: common_module_status
-  changed_when: false
-  failed_when: false
 
-- name: Enable container-tools module
-  ansible.builtin.command:
-    cmd: dnf module enable -y {{ common_container_tools_module }}
-  register: common_module_enable
-  changed_when: "'Enabling' in common_module_enable.stdout"
-  failed_when: common_module_enable.rc != 0 and 'already enabled' not in common_module_enable.stderr
-  when: common_module_status.rc != 0 or common_container_tools_module not in common_module_status.stdout
+# NOTE: In RHEL 9, container-tools is no longer a DNF module.
+# Container packages (podman, buildah, skopeo) are available directly
+# from the base repositories. No module enable step is required.
+
 
 - name: Ensure firewalld is running
   ansible.builtin.systemd:
@@ -65,7 +56,7 @@
   ansible.builtin.lineinfile:
     path: /etc/hosts
     regexp: ".*{{ quay_hostname }}$"
-    line: "{{ ansible_default_ipv4.address }} {{ quay_hostname }}"
+    line: "{{ ansible_facts['default_ipv4']['address'] }} {{ quay_hostname }}"
     state: present
   when: common_configure_hosts | bool
 

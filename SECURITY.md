@@ -149,7 +149,7 @@ To update container images to address security vulnerabilities:
 # Update version variables in inventory/group_vars/all/quay.yml
 # Then run the playbook to pull new images
 
-ansible-playbook playbooks/site.yml --tags quay --ask-vault-pass
+ansible-playbook playbooks/site.yml --tags quay --ask-vault-pass --ask-become-pass
 ```
 
 Monitor these sources for security updates:

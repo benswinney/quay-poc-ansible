@@ -10,8 +10,8 @@ common_packages:
   - openssl
   - firewalld
 
-# Container tools DNF module (RHEL 9)
-common_container_tools_module: container-tools
+# NOTE: container-tools DNF module is not used in RHEL 9
+# Container packages are installed directly from base repos
 
 # SELinux configuration
 common_selinux_enabled: true
