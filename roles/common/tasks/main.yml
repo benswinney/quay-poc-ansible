@@ -32,12 +32,20 @@
     name: "{{ common_packages }}"
     state: present
 
+- name: Check container-tools module status
+  ansible.builtin.command:
+    cmd: dnf module list --enabled {{ common_container_tools_module }}
+  register: common_module_status
+  changed_when: false
+  failed_when: false
+
 - name: Enable container-tools module
   ansible.builtin.command:
     cmd: dnf module enable -y {{ common_container_tools_module }}
   register: common_module_enable
   changed_when: "'Enabling' in common_module_enable.stdout"
   failed_when: common_module_enable.rc != 0 and 'already enabled' not in common_module_enable.stderr
+  when: common_module_status.rc != 0 or common_container_tools_module not in common_module_status.stdout
 
 - name: Ensure firewalld is running
   ansible.builtin.systemd:
@@ -101,8 +109,18 @@
   no_log: true
   failed_when: false
 
-- name: Install required Python packages for Ansible modules
+- name: Check if podman-compose is available
+  ansible.builtin.command:
+    cmd: which podman-compose
+  register: common_podman_compose_check
+  changed_when: false
+  failed_when: false
+
+- name: Install podman-compose via pip (if not available)
   ansible.builtin.pip:
     name:
       - podman-compose
     state: present
+    extra_args: --user
+  when: common_podman_compose_check.rc != 0
+  become: false

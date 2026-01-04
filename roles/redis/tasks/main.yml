@@ -23,6 +23,7 @@
     command: >
       redis-server --requirepass {{ vault_redis_password }}
     restart_policy: always
+  no_log: true
 
 - name: Ensure Redis container is running
   containers.podman.podman_container:

@@ -15,6 +15,7 @@
 - name: Pre-flight validation checks
   hosts: localhost
   gather_facts: false
+  become: false
   tags:
     - always
   tasks:
