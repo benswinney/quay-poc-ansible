@@ -3,9 +3,5 @@
 # ===================
 
 # Health check settings
-redis_health_check_retries: 30
-redis_health_check_delay: 5
-
-# Health check settings
 redis_health_check_retries: 20
 redis_health_check_delay: 3
