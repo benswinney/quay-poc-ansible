@@ -2,6 +2,16 @@
 # Ansible Galaxy Requirements
 # ===========================
 # Install with: ansible-galaxy install -r requirements.yml
+#
+# Known Deprecation Warnings:
+# ---------------------------
+# The following collections may emit deprecation warnings about importing
+# 'to_native' and 'to_bytes' from 'ansible.module_utils._text'. These are
+# upstream issues in the collections themselves (not in this project's code).
+# The collection maintainers need to update their imports to use
+# 'ansible.module_utils.common.text.converters' instead.
+# These warnings can be safely ignored until fixed collection versions are released.
+# Affected modules: ansible.posix.acl, containers.podman.podman_container
 
 collections:
   - name: ansible.posix

@@ -77,7 +77,7 @@
   ansible.builtin.command:
     cmd: >
       podman exec {{ postgresql_container_name }}
-      psql -U {{ postgresql_user }}
+      psql -U {{ postgresql_user }} -d postgres
       -c "CREATE DATABASE {{ clair_postgresql_database }};"
   register: postgresql_clair_db_result
   changed_when: "'CREATE DATABASE' in postgresql_clair_db_result.stdout"
