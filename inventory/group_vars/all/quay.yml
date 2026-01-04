@@ -63,7 +63,8 @@ mirror_container_name: quay-mirror
 
 # Storage Configuration (PoC uses local storage)
 # -----------------------------------------------
-quay_storage_path: "{{ quay_base_dir }}/storage"
+quay_config_dir: "{{ quay_base_dir }}/config"
+quay_storage_dir: "{{ quay_base_dir }}/storage"
 quay_storage_type: LocalStorage
 
 # Firewall Ports
