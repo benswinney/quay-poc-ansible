@@ -1,0 +1,19 @@
+---
+# Clair Role Handlers
+# ===================
+
+- name: Restart clair container
+  containers.podman.podman_container:
+    name: "{{ clair_container_name }}"
+    state: started
+    recreate: true
+    image: "{{ clair_image }}"
+    ports:
+      - "{{ clair_http_port }}:{{ clair_http_port }}"
+      - "{{ clair_introspection_port }}:{{ clair_introspection_port }}"
+    volumes:
+      - "{{ clair_config_dir }}:/clair:Z"
+    env:
+      CLAIR_CONF: /clair/config.yaml
+      CLAIR_MODE: combo
+    restart_policy: always

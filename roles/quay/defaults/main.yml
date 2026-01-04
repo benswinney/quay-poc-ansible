@@ -1,0 +1,29 @@
+---
+# Quay Role Defaults
+# ==================
+
+# Configuration directory
+quay_config_dir: "{{ quay_base_dir }}/config"
+
+# Storage directory
+quay_storage_dir: "{{ quay_base_dir }}/storage"
+
+# Storage UID for ACL (Quay runs as UID 1001)
+quay_storage_uid: 1001
+
+# Health check settings (reduced for faster failure detection)
+quay_health_check_retries: 30
+quay_health_check_delay: 10
+
+# SSL certificate paths (inside container)
+quay_ssl_cert_path: /conf/stack/ssl.cert
+quay_ssl_key_path: /conf/stack/ssl.key
+
+# Feature flags
+quay_feature_mailing: false
+quay_feature_build_support: false
+quay_feature_security_scanner: "{{ quay_enable_clair }}"
+quay_feature_repo_mirror: "{{ quay_enable_mirror }}"
+
+# Create namespace on push
+quay_create_namespace_on_push: true

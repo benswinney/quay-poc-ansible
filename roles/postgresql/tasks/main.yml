@@ -1,0 +1,94 @@
+---
+# PostgreSQL Role Tasks
+# =====================
+
+- name: Create PostgreSQL data directory
+  ansible.builtin.file:
+    path: "{{ postgresql_data_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Set ACL for PostgreSQL data directory
+  ansible.posix.acl:
+    path: "{{ postgresql_data_dir }}"
+    entity: "{{ postgresql_uid }}"
+    etype: user
+    permissions: rwx
+    state: present
+
+- name: Pull PostgreSQL container image
+  containers.podman.podman_image:
+    name: "{{ postgresql_image }}"
+    state: present
+
+- name: Check if PostgreSQL container exists
+  containers.podman.podman_container_info:
+    name: "{{ postgresql_container_name }}"
+  register: postgresql_container_check
+
+- name: Create and start PostgreSQL container
+  containers.podman.podman_container:
+    name: "{{ postgresql_container_name }}"
+    image: "{{ postgresql_image }}"
+    state: started
+    recreate: false
+    ports:
+      - "{{ postgresql_port }}:5432"
+    env:
+      POSTGRES_USER: "{{ postgresql_user }}"
+      POSTGRES_PASSWORD: "{{ vault_postgresql_password }}"
+      POSTGRES_DB: "{{ postgresql_database }}"
+      # For Red Hat PostgreSQL image compatibility
+      POSTGRESQL_USER: "{{ postgresql_user }}"
+      POSTGRESQL_PASSWORD: "{{ vault_postgresql_password }}"
+      POSTGRESQL_DATABASE: "{{ postgresql_database }}"
+      POSTGRESQL_ADMIN_PASSWORD: "{{ vault_postgresql_admin_password }}"
+    volumes:
+      - "{{ postgresql_data_dir }}:{% if quay_distribution == 'redhat' %}/var/lib/pgsql/data{% else %}/var/lib/postgresql/data{% endif %}:Z"
+    restart_policy: always
+
+- name: Ensure PostgreSQL container is running
+  containers.podman.podman_container:
+    name: "{{ postgresql_container_name }}"
+    state: started
+
+- name: Wait for PostgreSQL to be ready
+  ansible.builtin.command:
+    cmd: >
+      podman exec {{ postgresql_container_name }}
+      pg_isready -U {{ postgresql_user }} -d {{ postgresql_database }}
+  register: pg_ready
+  until: pg_ready.rc == 0
+  retries: "{{ postgresql_health_check_retries }}"
+  delay: "{{ postgresql_health_check_delay }}"
+  changed_when: false
+
+- name: Enable pg_trgm extension for Quay
+  ansible.builtin.command:
+    cmd: >
+      podman exec {{ postgresql_container_name }}
+      psql -U {{ postgresql_user }} -d {{ postgresql_database }}
+      -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+  register: pg_trgm_result
+  changed_when: "'CREATE EXTENSION' in pg_trgm_result.stdout"
+  failed_when: pg_trgm_result.rc != 0 and 'already exists' not in pg_trgm_result.stderr
+
+- name: Create Clair database (if Clair enabled)
+  ansible.builtin.command:
+    cmd: >
+      podman exec {{ postgresql_container_name }}
+      psql -U {{ postgresql_user }}
+      -c "CREATE DATABASE {{ clair_postgresql_database }};"
+  register: clair_db_result
+  changed_when: "'CREATE DATABASE' in clair_db_result.stdout"
+  failed_when: clair_db_result.rc != 0 and 'already exists' not in clair_db_result.stderr
+  when: quay_enable_clair | bool
+
+- name: Display PostgreSQL connection info
+  ansible.builtin.debug:
+    msg: |
+      PostgreSQL is running:
+        Host: {{ quay_hostname }}
+        Port: {{ postgresql_port }}
+        Database: {{ postgresql_database }}
+        User: {{ postgresql_user }}

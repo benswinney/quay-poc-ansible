@@ -1,0 +1,109 @@
+---
+# Common Role Tasks - System Preparation
+# ======================================
+
+- name: Validate RHEL 9 target system
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == "RedHat" or ansible_distribution == "CentOS" or ansible_distribution == "Rocky" or ansible_distribution == "AlmaLinux"
+      - ansible_distribution_major_version | int >= 9
+    fail_msg: "This playbook requires RHEL 9 or compatible distribution"
+
+- name: Validate hostname configuration
+  ansible.builtin.assert:
+    that:
+      - quay_hostname is defined
+      - quay_hostname | length > 0
+      - quay_hostname != 'quay-server.example.com'
+      - quay_hostname != 'quay.example.com'
+      - "'example.com' not in quay_hostname"
+    fail_msg: |
+      ❌ Invalid hostname configuration!
+      
+      The hostname '{{ quay_hostname | default("undefined") }}' appears to be a placeholder.
+      Please set a valid hostname in inventory/group_vars/all/main.yml
+      
+      Example:
+        quay_hostname: quay.mycompany.com
+    success_msg: "✓ Hostname validated: {{ quay_hostname }}"
+    success_msg: "Target system validated: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+
+- name: Install required packages
+  ansible.builtin.dnf:
+    name: "{{ common_packages }}"
+    state: present
+
+- name: Enable container-tools module
+  ansible.builtin.command:
+    cmd: dnf module enable -y {{ common_container_tools_module }}
+  register: module_enable
+  changed_when: "'Enabling' in module_enable.stdout"
+  failed_when: module_enable.rc != 0 and 'already enabled' not in module_enable.stderr
+
+- name: Ensure firewalld is running
+  ansible.builtin.systemd:
+    name: firewalld
+    state: started
+    enabled: true
+
+- name: Configure firewall ports for Quay
+  ansible.posix.firewalld:
+    port: "{{ item }}"
+    permanent: true
+    state: enabled
+    immediate: true
+  loop: "{{ quay_firewall_ports }}"
+
+- name: Add hostname to /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: ".*{{ quay_hostname }}$"
+    line: "{{ ansible_default_ipv4.address }} {{ quay_hostname }}"
+    state: present
+  when: common_configure_hosts | bool
+
+- name: Create Quay base directory
+  ansible.builtin.file:
+    path: "{{ quay_base_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Create Quay subdirectories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ quay_base_dir }}/config"
+    - "{{ quay_base_dir }}/storage"
+    - "{{ quay_base_dir }}/postgres"
+    - "{{ quay_base_dir }}/clair-config"
+
+- name: Authenticate to container registry (Red Hat)
+  containers.podman.podman_login:
+    registry: registry.redhat.io
+    username: "{{ vault_registry_username }}"
+    password: "{{ vault_registry_password }}"
+  when: quay_distribution == 'redhat'
+  no_log: true
+
+- name: Authenticate to container registry (if credentials provided for project)
+  containers.podman.podman_login:
+    registry: "{{ item }}"
+    username: "{{ vault_registry_username }}"
+    password: "{{ vault_registry_password }}"
+  loop:
+    - quay.io
+    - docker.io
+  when:
+    - quay_distribution == 'project'
+    - vault_registry_username is defined
+    - vault_registry_password is defined
+  no_log: true
+  ignore_errors: true
+
+- name: Install required Python packages for Ansible modules
+  ansible.builtin.pip:
+    name:
+      - podman-compose
+    state: present

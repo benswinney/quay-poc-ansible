@@ -1,0 +1,109 @@
+---
+# Quay SSL Certificate Tasks
+# ==========================
+
+- name: Generate self-signed SSL certificate
+  when: quay_ssl_mode == 'selfsigned'
+  block:
+    - name: Create OpenSSL configuration file
+      ansible.builtin.template:
+        src: openssl.cnf.j2
+        dest: "{{ quay_config_dir }}/openssl.cnf"
+        mode: '0644'
+
+    - name: Generate private key
+      ansible.builtin.command:
+        cmd: >
+          openssl genrsa -out {{ quay_config_dir }}/ssl.key 4096
+        creates: "{{ quay_config_dir }}/ssl.key"
+
+    - name: Generate self-signed certificate
+      ansible.builtin.command:
+        cmd: >
+          openssl req -new -x509
+          -key {{ quay_config_dir }}/ssl.key
+          -out {{ quay_config_dir }}/ssl.cert
+          -days {{ quay_ssl_cert_days }}
+          -config {{ quay_config_dir }}/openssl.cnf
+        creates: "{{ quay_config_dir }}/ssl.cert"
+
+    - name: Set permissions on SSL key
+      ansible.builtin.file:
+        path: "{{ quay_config_dir }}/ssl.key"
+        mode: '0600'
+
+    - name: Set permissions on SSL certificate
+      ansible.builtin.file:
+        path: "{{ quay_config_dir }}/ssl.cert"
+        mode: '0644'
+
+- name: Deploy provided SSL certificates
+  when: quay_ssl_mode == 'provided'
+  block:
+    - name: Copy SSL certificate from file
+      ansible.builtin.copy:
+        src: "{{ quay_ssl_cert_file }}"
+        dest: "{{ quay_config_dir }}/ssl.cert"
+        mode: '0644'
+      when: quay_ssl_cert_file is defined
+
+    - name: Copy SSL key from file
+      ansible.builtin.copy:
+        src: "{{ quay_ssl_key_file }}"
+        dest: "{{ quay_config_dir }}/ssl.key"
+        mode: '0600'
+      when: quay_ssl_key_file is defined
+
+    - name: Write SSL certificate from vault content
+      ansible.builtin.copy:
+        content: "{{ vault_ssl_cert }}"
+        dest: "{{ quay_config_dir }}/ssl.cert"
+        mode: '0644'
+      when:
+        - quay_ssl_cert_file is not defined
+        - vault_ssl_cert is defined
+      no_log: true
+
+    - name: Write SSL key from vault content
+      ansible.builtin.copy:
+        content: "{{ vault_ssl_key }}"
+        dest: "{{ quay_config_dir }}/ssl.key"
+        mode: '0600'
+      when:
+        - quay_ssl_key_file is not defined
+        - vault_ssl_key is defined
+      no_log: true
+
+    - name: Copy CA bundle if provided
+      ansible.builtin.copy:
+        src: "{{ quay_ssl_ca_file }}"
+        dest: "{{ quay_config_dir }}/ca.cert"
+        mode: '0644'
+      when: quay_ssl_ca_file is defined
+
+    - name: Write CA bundle from vault content
+      ansible.builtin.copy:
+        content: "{{ vault_ssl_ca }}"
+        dest: "{{ quay_config_dir }}/ca.cert"
+        mode: '0644'
+      when:
+        - quay_ssl_ca_file is not defined
+        - vault_ssl_ca is defined
+      no_log: true
+
+- name: Verify SSL certificate exists
+  ansible.builtin.stat:
+    path: "{{ quay_config_dir }}/ssl.cert"
+  register: ssl_cert_stat
+
+- name: Verify SSL key exists
+  ansible.builtin.stat:
+    path: "{{ quay_config_dir }}/ssl.key"
+  register: ssl_key_stat
+
+- name: Fail if SSL files are missing
+  ansible.builtin.fail:
+    msg: "SSL certificate or key not found. Check quay_ssl_mode configuration."
+  when:
+    - quay_ssl_mode != 'none'
+    - not (ssl_cert_stat.stat.exists and ssl_key_stat.stat.exists)

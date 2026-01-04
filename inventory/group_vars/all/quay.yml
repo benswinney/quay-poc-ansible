@@ -1,0 +1,76 @@
+---
+# Quay PoC Ansible - Container Images & Versions
+# ===============================================
+
+# Version Configuration
+# ---------------------
+quay_version: "3.12.0"
+clair_version: "4.7.4"
+postgresql_version: "13"
+redis_version: "7"
+
+# Container Images by Distribution
+# ---------------------------------
+quay_distribution_images:
+  project:
+    quay: "quay.io/projectquay/quay:v{{ quay_version }}"
+    clair: "quay.io/projectquay/clair:{{ clair_version }}"
+    postgresql: "docker.io/library/postgres:{{ postgresql_version }}-alpine"
+    redis: "docker.io/library/redis:{{ redis_version }}-alpine"
+  redhat:
+    quay: "registry.redhat.io/quay/quay-rhel8:v{{ quay_version }}"
+    clair: "registry.redhat.io/quay/clair-rhel8:v{{ quay_version }}"
+    postgresql: "registry.redhat.io/rhel8/postgresql-{{ postgresql_version }}:latest"
+    redis: "registry.redhat.io/rhel8/redis-6:latest"
+
+# Derived Image Variables (do not modify)
+# ----------------------------------------
+quay_image: "{{ quay_distribution_images[quay_distribution].quay }}"
+clair_image: "{{ quay_distribution_images[quay_distribution].clair }}"
+postgresql_image: "{{ quay_distribution_images[quay_distribution].postgresql }}"
+redis_image: "{{ quay_distribution_images[quay_distribution].redis }}"
+
+# PostgreSQL Configuration
+# ------------------------
+postgresql_user: quayuser
+postgresql_database: quay
+postgresql_port: 5432
+postgresql_admin_user: postgres
+
+# Clair PostgreSQL Database
+clair_postgresql_database: clair
+
+# Redis Configuration
+# -------------------
+redis_port: 6379
+
+# Clair Configuration
+# -------------------
+clair_http_port: 6060
+clair_introspection_port: 6061
+
+# Mirror Worker Configuration
+# ---------------------------
+mirror_worker_count: 1
+
+# Container Names
+# ---------------
+postgresql_container_name: postgresql-quay
+redis_container_name: redis-quay
+quay_container_name: quay
+clair_container_name: clair
+mirror_container_name: quay-mirror
+
+# Storage Configuration (PoC uses local storage)
+# -----------------------------------------------
+quay_storage_path: "{{ quay_base_dir }}/storage"
+quay_storage_type: LocalStorage
+
+# Firewall Ports
+# --------------
+quay_firewall_ports:
+  - "{{ quay_http_port }}/tcp"
+  - "{{ quay_https_port }}/tcp"
+  - "{{ postgresql_port }}/tcp"
+  - "{{ redis_port }}/tcp"
+  - "{{ clair_http_port }}/tcp"

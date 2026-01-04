@@ -1,0 +1,15 @@
+---
+# Mirror Role Handlers
+# ====================
+
+- name: Restart mirror container
+  containers.podman.podman_container:
+    name: "{{ mirror_container_name }}"
+    state: started
+    recreate: true
+    image: "{{ quay_image }}"
+    command: repomirror
+    volumes:
+      - "{{ quay_config_dir }}:/conf/stack:Z"
+      - "{{ quay_storage_dir }}:/datastorage:Z"
+    restart_policy: always

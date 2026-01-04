@@ -1,0 +1,20 @@
+---
+# Common Role Defaults
+# ====================
+
+# Required packages for Quay deployment
+common_packages:
+  - podman
+  - python3-pip
+  - acl
+  - openssl
+  - firewalld
+
+# Container tools DNF module (RHEL 9)
+common_container_tools_module: container-tools
+
+# SELinux configuration
+common_selinux_enabled: true
+
+# Hostname configuration
+common_configure_hosts: true

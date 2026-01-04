@@ -1,0 +1,184 @@
+---
+# Quay PoC Ansible - Main Site Playbook
+# ======================================
+#
+# This playbook deploys a complete Quay registry environment
+# including PostgreSQL, Redis, and optional Clair and Mirror components.
+#
+# Usage:
+#   ansible-playbook playbooks/site.yml --ask-vault-pass
+#
+# To deploy only specific components:
+#   ansible-playbook playbooks/site.yml --tags postgresql,redis,quay
+#
+# Available tags: common, postgresql, redis, quay, clair, mirror
+- name: Pre-flight validation checks
+  hosts: localhost
+  gather_facts: false
+  tags:
+    - always
+  tasks:
+    - name: Check if vault file exists
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/../inventory/group_vars/all/vault.yml"
+      register: vault_check
+      
+    - name: Fail if vault not configured
+      ansible.builtin.fail:
+        msg: |
+          ❌ Vault file not found!
+          
+          Please create and configure the vault file:
+            1. cp inventory/group_vars/all/vault.yml.example inventory/group_vars/all/vault.yml
+            2. Edit vault.yml with your actual credentials
+            3. Encrypt: ansible-vault encrypt inventory/group_vars/all/vault.yml
+          
+          Then run the playbook again with --ask-vault-pass
+      when: not vault_check.stat.exists
+
+    - name: Check if inventory has configured hosts
+      ansible.builtin.assert:
+        that:
+          - groups['quay_servers'] is defined
+          - groups['quay_servers'] | length > 0
+        fail_msg: |
+          ❌ No hosts configured in inventory!
+          
+          Please edit inventory/hosts.yml and configure at least one host:
+            quay_servers:
+              hosts:
+                your-server.example.com:
+                  ansible_host: 192.168.1.100
+                  ansible_user: root
+        success_msg: "✓ Inventory configured with {{ groups['quay_servers'] | length }} host(s)"
+
+    - name: Validate required Ansible collections
+      ansible.builtin.command:
+        cmd: ansible-galaxy collection list
+      register: collection_list
+      changed_when: false
+      failed_when: false
+
+    - name: Check ansible.posix collection
+      ansible.builtin.fail:
+        msg: |
+          ❌ Required collection 'ansible.posix' not found!
+          
+          Install with: ansible-galaxy collection install ansible.posix
+      when: "'ansible.posix' not in collection_list.stdout"
+
+    - name: Check containers.podman collection
+      ansible.builtin.fail:
+        msg: |
+          ❌ Required collection 'containers.podman' not found!
+          
+          Install with: ansible-galaxy collection install containers.podman
+      when: "'containers.podman' not in collection_list.stdout"
+
+    - name: Display pre-flight validation success
+      ansible.builtin.debug:
+        msg: |
+          
+          ✓ Pre-flight validation passed!
+          ✓ Vault file exists
+          ✓ Inventory configured
+          ✓ Required collections installed
+          
+          Proceeding with deployment...
+
+
+- name: Prepare RHEL system for Quay deployment
+  hosts: quay_servers
+  become: true
+  tags:
+    - common
+    - always
+  roles:
+    - common
+
+- name: Deploy PostgreSQL database
+  hosts: quay_servers
+  become: true
+  tags:
+    - postgresql
+    - database
+  roles:
+    - postgresql
+
+- name: Deploy Redis cache
+  hosts: quay_servers
+  become: true
+  tags:
+    - redis
+    - cache
+  roles:
+    - redis
+
+- name: Deploy Quay registry
+  hosts: quay_servers
+  become: true
+  tags:
+    - quay
+    - registry
+  roles:
+    - quay
+
+- name: Deploy Clair security scanner
+  hosts: quay_servers
+  become: true
+  tags:
+    - clair
+    - security
+  roles:
+    - role: clair
+      when: quay_enable_clair | default(false) | bool
+
+- name: Deploy Mirror worker
+  hosts: quay_servers
+  become: true
+  tags:
+    - mirror
+    - mirroring
+  roles:
+    - role: mirror
+      when: quay_enable_mirror | default(false) | bool
+
+- name: Display deployment summary
+  hosts: quay_servers
+  become: false
+  gather_facts: false
+  tags:
+    - always
+  tasks:
+    - name: Show deployment summary
+      ansible.builtin.debug:
+        msg: |
+
+          ╔══════════════════════════════════════════════════════════════╗
+          ║            QUAY POC DEPLOYMENT COMPLETE                      ║
+          ╠══════════════════════════════════════════════════════════════╣
+          ║                                                              ║
+          ║  Quay Registry:  https://{{ quay_hostname }}{{ '' | indent(21 - quay_hostname | length) }}║
+          ║                                                              ║
+          ║  Components deployed:                                        ║
+          ║    ✓ PostgreSQL (port {{ postgresql_port }})                              ║
+          ║    ✓ Redis (port {{ redis_port }})                                    ║
+          ║    ✓ Quay Registry (ports {{ quay_http_port }}/{{ quay_https_port }})                      ║
+          {% if quay_enable_clair | default(false) %}
+          ║    ✓ Clair Security Scanner (port {{ clair_http_port }})               ║
+          {% endif %}
+          {% if quay_enable_mirror | default(false) %}
+          ║    ✓ Mirror Worker                                           ║
+          {% endif %}
+          ║                                                              ║
+          ║  Next steps:                                                 ║
+          ║    1. Access web UI at https://{{ quay_hostname }}{{ '' | indent(13 - quay_hostname | length) }}║
+          ║    2. Create your admin account ({{ quay_superusers[0] | default('quayadmin') }}){{ '' | indent(18 - (quay_superusers[0] | default('quayadmin')) | length) }}║
+          ║    3. Create organizations and repositories                  ║
+          ║                                                              ║
+          {% if quay_ssl_mode | default('selfsigned') == 'selfsigned' %}
+          ║  NOTE: Using self-signed certificate.                        ║
+          ║  For CLI access: podman login --tls-verify=false {{ quay_hostname }}  ║
+          {% endif %}
+          ║                                                              ║
+          ╚══════════════════════════════════════════════════════════════╝

@@ -1,0 +1,74 @@
+---
+# Clair Role Tasks
+# ================
+
+- name: Create Clair configuration directory
+  ansible.builtin.file:
+    path: "{{ clair_config_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Generate Clair configuration file
+  ansible.builtin.template:
+    src: clair-config.yaml.j2
+    dest: "{{ clair_config_dir }}/config.yaml"
+    mode: '0600'
+  no_log: true
+  notify: Restart clair container
+
+- name: Pull Clair container image
+  containers.podman.podman_image:
+    name: "{{ clair_image }}"
+    state: present
+
+- name: Check if Clair container exists
+  containers.podman.podman_container_info:
+    name: "{{ clair_container_name }}"
+  register: clair_container_check
+
+- name: Create and start Clair container
+  containers.podman.podman_container:
+    name: "{{ clair_container_name }}"
+    image: "{{ clair_image }}"
+    state: started
+    recreate: false
+    ports:
+      - "{{ clair_http_port }}:{{ clair_http_port }}"
+      - "{{ clair_introspection_port }}:{{ clair_introspection_port }}"
+    volumes:
+      - "{{ clair_config_dir }}:/clair:Z"
+    env:
+      CLAIR_CONF: /clair/config.yaml
+      CLAIR_MODE: combo
+    restart_policy: always
+
+- name: Ensure Clair container is running
+  containers.podman.podman_container:
+    name: "{{ clair_container_name }}"
+    state: started
+
+- name: Wait for Clair to be ready
+  ansible.builtin.uri:
+    url: "http://{{ quay_hostname }}:{{ clair_introspection_port }}/healthz"
+    status_code: 200
+  register: clair_health
+  until: clair_health.status == 200
+  retries: "{{ clair_health_check_retries }}"
+  delay: "{{ clair_health_check_delay }}"
+
+- name: Display Clair information
+  ansible.builtin.debug:
+    msg: |
+
+      ============================================
+      Clair Security Scanner is running!
+      ============================================
+
+      HTTP Endpoint: http://{{ quay_hostname }}:{{ clair_http_port }}
+      Introspection: http://{{ quay_hostname }}:{{ clair_introspection_port }}
+
+      Clair is now integrated with Quay.
+      Security scanning will be performed automatically
+      when images are pushed to the registry.
+
+      ============================================

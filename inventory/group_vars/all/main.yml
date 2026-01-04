@@ -1,0 +1,39 @@
+---
+# Quay PoC Ansible - Main Configuration
+# ========================================
+
+# Base Configuration
+# ------------------
+quay_base_dir: /opt/quay
+quay_hostname: quay-server.example.com
+
+# Distribution Selection
+# ----------------------
+# Options: 'project' (open source) or 'redhat' (enterprise)
+quay_distribution: project
+
+# Component Toggles
+# -----------------
+quay_enable_clair: true
+quay_enable_mirror: true
+
+# SSL/TLS Configuration
+# ---------------------
+# Options: 'selfsigned' or 'provided'
+quay_ssl_mode: selfsigned
+quay_ssl_cert_days: 365
+
+# If quay_ssl_mode is 'provided', specify certificate paths or use vault variables
+# quay_ssl_cert_content: "{{ vault_ssl_cert }}"
+# quay_ssl_key_content: "{{ vault_ssl_key }}"
+# quay_ssl_ca_content: "{{ vault_ssl_ca }}"  # Optional CA bundle
+
+# Network Configuration
+# ---------------------
+quay_http_port: 80
+quay_https_port: 443
+
+# Superuser Configuration
+# -----------------------
+quay_superusers:
+  - quayadmin

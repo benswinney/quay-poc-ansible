@@ -1,0 +1,10 @@
+---
+# Mirror Role Defaults
+# ====================
+
+# Mirror worker configuration
+mirror_worker_replicas: 1
+
+# Health check settings
+mirror_health_check_retries: 30
+mirror_health_check_delay: 5

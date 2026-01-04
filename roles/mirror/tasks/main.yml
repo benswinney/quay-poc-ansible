@@ -1,0 +1,53 @@
+---
+# Mirror Worker Role Tasks
+# ========================
+
+- name: Check if Quay container is running
+  containers.podman.podman_container_info:
+    name: "{{ quay_container_name }}"
+  register: quay_check
+  failed_when: quay_check.containers | length == 0
+
+- name: Check if Mirror container exists
+  containers.podman.podman_container_info:
+    name: "{{ mirror_container_name }}"
+  register: mirror_container_check
+
+- name: Create and start Mirror worker container
+  containers.podman.podman_container:
+    name: "{{ mirror_container_name }}"
+    image: "{{ quay_image }}"
+    state: started
+    recreate: false
+    command: repomirror
+    volumes:
+      - "{{ quay_config_dir }}:/conf/stack:Z"
+      - "{{ quay_storage_dir }}:/datastorage:Z"
+    restart_policy: always
+  when: mirror_container_check.containers | length == 0
+
+- name: Verify Mirror worker is running
+  containers.podman.podman_container_info:
+    name: "{{ mirror_container_name }}"
+  register: mirror_status
+  until: mirror_status.containers | length > 0 and mirror_status.containers[0].State.Running
+  retries: "{{ mirror_health_check_retries }}"
+  delay: "{{ mirror_health_check_delay }}"
+
+- name: Display Mirror worker information
+  ansible.builtin.debug:
+    msg: |
+
+      ============================================
+      Quay Mirror Worker is running!
+      ============================================
+
+      The mirror worker shares the Quay configuration
+      and will automatically sync mirrored repositories.
+
+      To configure repository mirroring:
+      1. Go to Quay web interface
+      2. Navigate to Repository Settings > Repository Mirroring
+      3. Enable mirroring and configure the source
+
+      ============================================

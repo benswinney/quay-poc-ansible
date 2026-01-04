@@ -1,0 +1,54 @@
+---
+# Quay PoC Ansible - Vault Variables Template
+# ============================================
+#
+# INSTRUCTIONS:
+# 1. Copy this file to vault.yml:
+#    cp vault.yml.example vault.yml
+#
+# 2. Edit vault.yml with your actual credentials
+#
+# 3. Encrypt with ansible-vault:
+#    ansible-vault encrypt inventory/group_vars/all/vault.yml
+#
+# 4. Run playbook with --ask-vault-pass or configure vault password file
+
+# Container Registry Credentials
+# ------------------------------
+# Required for Red Hat Quay distribution (registry.redhat.io)
+# Optional for Project Quay if using private registries
+vault_registry_username: your-registry-username
+vault_registry_password: your-registry-password
+
+# PostgreSQL Credentials
+# ----------------------
+vault_postgresql_password: changeme-postgres-password
+vault_postgresql_admin_password: changeme-admin-password
+
+# Redis Credentials
+# -----------------
+vault_redis_password: changeme-redis-password
+
+# Quay Secret Keys
+# ----------------
+# Generate with: python3 -c "import uuid; print(uuid.uuid4())"
+vault_quay_secret_key: changeme-generate-uuid-here
+vault_quay_database_secret: changeme-generate-uuid-here
+
+# SSL Certificates (if quay_ssl_mode: provided)
+# ----------------------------------------------
+# Paste your certificate contents here (PEM format)
+# vault_ssl_cert: |
+#   -----BEGIN CERTIFICATE-----
+#   ...
+#   -----END CERTIFICATE-----
+
+# vault_ssl_key: |
+#   -----BEGIN PRIVATE KEY-----
+#   ...
+#   -----END PRIVATE KEY-----
+
+# vault_ssl_ca: |
+#   -----BEGIN CERTIFICATE-----
+#   ...
+#   -----END CERTIFICATE-----

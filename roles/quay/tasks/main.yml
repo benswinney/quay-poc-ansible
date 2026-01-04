@@ -1,0 +1,102 @@
+---
+# Quay Role Tasks
+# ================
+
+- name: Create Quay configuration directory
+  ansible.builtin.file:
+    path: "{{ quay_config_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Create Quay storage directory
+  ansible.builtin.file:
+    path: "{{ quay_storage_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Set ACL for Quay storage directory
+  ansible.posix.acl:
+    path: "{{ quay_storage_dir }}"
+    entity: "{{ quay_storage_uid }}"
+    etype: user
+    permissions: rwx
+    state: present
+
+- name: Include SSL certificate tasks
+  ansible.builtin.include_tasks: ssl.yml
+  when: quay_ssl_mode is defined and quay_ssl_mode != 'none'
+
+- name: Generate Quay configuration file
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: "{{ quay_config_dir }}/config.yaml"
+    mode: '0600'
+  no_log: true
+  notify: Restart quay container
+
+- name: Pull Quay container image
+  containers.podman.podman_image:
+    name: "{{ quay_image }}"
+    state: present
+
+- name: Check if Quay container exists
+  containers.podman.podman_container_info:
+    name: "{{ quay_container_name }}"
+  register: quay_container_check
+
+- name: Create and start Quay container
+  containers.podman.podman_container:
+    name: "{{ quay_container_name }}"
+    image: "{{ quay_image }}"
+    state: started
+    recreate: false
+    ports:
+      - "{{ quay_http_port }}:8080"
+      - "{{ quay_https_port }}:8443"
+    volumes:
+      - "{{ quay_config_dir }}:/conf/stack:Z"
+      - "{{ quay_storage_dir }}:/datastorage:Z"
+    restart_policy: always
+
+- name: Ensure Quay container is running
+  containers.podman.podman_container:
+    name: "{{ quay_container_name }}"
+    state: started
+
+- name: Wait for Quay to be ready
+  ansible.builtin.uri:
+    url: "https://{{ quay_hostname }}/health/instance"
+    validate_certs: false
+    status_code: 200
+  register: quay_health
+  until: quay_health.status == 200
+  retries: "{{ quay_health_check_retries }}"
+  delay: "{{ quay_health_check_delay }}"
+
+- name: Display Quay access information
+  ansible.builtin.debug:
+    msg: |
+
+      ============================================
+      Quay Registry is now running!
+      ============================================
+
+      Web Interface: https://{{ quay_hostname }}
+
+      {% if quay_ssl_mode == 'selfsigned' %}
+      NOTE: Using self-signed certificate.
+      For podman/docker access, use --tls-verify=false
+
+      Example:
+        podman login --tls-verify=false {{ quay_hostname }}
+      {% endif %}
+
+      Create your first account at the web interface.
+      {% if quay_superusers is defined and quay_superusers | length > 0 %}
+      The following users will have superuser privileges:
+      {% for user in quay_superusers %}
+        - {{ user }}
+      {% endfor %}
+      {% endif %}
+
+      ============================================

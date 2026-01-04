@@ -1,0 +1,49 @@
+---
+# Redis Role Tasks
+# ================
+
+- name: Pull Redis container image
+  containers.podman.podman_image:
+    name: "{{ redis_image }}"
+    state: present
+
+- name: Check if Redis container exists
+  containers.podman.podman_container_info:
+    name: "{{ redis_container_name }}"
+  register: redis_container_check
+
+- name: Create and start Redis container
+  containers.podman.podman_container:
+    name: "{{ redis_container_name }}"
+    image: "{{ redis_image }}"
+    state: started
+    recreate: false
+    ports:
+      - "{{ redis_port }}:6379"
+    command: >
+      redis-server --requirepass {{ vault_redis_password }}
+    restart_policy: always
+
+- name: Ensure Redis container is running
+  containers.podman.podman_container:
+    name: "{{ redis_container_name }}"
+    state: started
+
+- name: Wait for Redis to be ready
+  ansible.builtin.command:
+    cmd: >
+      podman exec {{ redis_container_name }}
+      redis-cli -a {{ vault_redis_password }} ping
+  register: redis_ready
+  until: redis_ready.stdout == "PONG"
+  retries: "{{ redis_health_check_retries }}"
+  delay: "{{ redis_health_check_delay }}"
+  changed_when: false
+  no_log: true
+
+- name: Display Redis connection info
+  ansible.builtin.debug:
+    msg: |
+      Redis is running:
+        Host: {{ quay_hostname }}
+        Port: {{ redis_port }}

@@ -1,0 +1,14 @@
+---
+# Common Role Handlers
+# ====================
+
+- name: Reload firewalld
+  ansible.builtin.systemd:
+    name: firewalld
+    state: reloaded
+
+- name: Restart podman
+  ansible.builtin.systemd:
+    name: podman
+    state: restarted
+    enabled: true
