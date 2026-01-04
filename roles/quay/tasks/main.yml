@@ -8,6 +8,14 @@
     state: directory
     mode: '0755'
 
+- name: Set ACL for Quay configuration directory
+  ansible.posix.acl:
+    path: "{{ quay_config_dir }}"
+    entity: "{{ quay_storage_uid }}"
+    etype: user
+    permissions: rx
+    state: present
+
 - name: Create Quay storage directory
   ansible.builtin.file:
     path: "{{ quay_storage_dir }}"
@@ -33,6 +41,14 @@
     mode: '0600'
   no_log: true
   notify: Restart quay container
+
+- name: Set ACL for Quay configuration file
+  ansible.posix.acl:
+    path: "{{ quay_config_dir }}/config.yaml"
+    entity: "{{ quay_storage_uid }}"
+    etype: user
+    permissions: r
+    state: present
 
 - name: Pull Quay container image
   containers.podman.podman_image:
