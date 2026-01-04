@@ -5,6 +5,9 @@
 # Clair configuration directory
 clair_config_dir: "{{ quay_base_dir }}/clair-config"
 
+# Clair runs as nobody:nobody (UID 65534) per the container image
+clair_uid: 65534
+
 # Health check settings
 clair_health_check_retries: 30
 clair_health_check_delay: 10
