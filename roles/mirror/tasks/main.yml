@@ -5,8 +5,8 @@
 - name: Check if Quay container is running
   containers.podman.podman_container_info:
     name: "{{ quay_container_name }}"
-  register: quay_check
-  failed_when: quay_check.containers | length == 0
+  register: mirror_quay_check
+  failed_when: mirror_quay_check.containers | length == 0
 
 - name: Check if Mirror container exists
   containers.podman.podman_container_info:

@@ -12,13 +12,3 @@ postgresql_uid: 26
 # Health check settings
 postgresql_health_check_retries: 30
 postgresql_health_check_delay: 5
-
-# PostgreSQL data directory
-postgresql_data_dir: "{{ quay_base_dir }}/postgres"
-
-# PostgreSQL UID for ACL (default postgres user in container)
-postgresql_uid: 26
-
-# Health check settings
-postgresql_health_check_retries: 30
-postgresql_health_check_delay: 5

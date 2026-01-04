@@ -1,47 +1,63 @@
 # Documentation changes
 documentation:
-  - '**/*.md'
-  - 'docs/**/*'
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.md'
+          - 'docs/**/*'
 
 # Role-specific labels
 role:common:
-  - 'roles/common/**/*'
+  - changed-files:
+      - any-glob-to-any-file: 'roles/common/**/*'
 
 role:postgresql:
-  - 'roles/postgresql/**/*'
+  - changed-files:
+      - any-glob-to-any-file: 'roles/postgresql/**/*'
 
 role:redis:
-  - 'roles/redis/**/*'
+  - changed-files:
+      - any-glob-to-any-file: 'roles/redis/**/*'
 
 role:quay:
-  - 'roles/quay/**/*'
+  - changed-files:
+      - any-glob-to-any-file: 'roles/quay/**/*'
 
 role:clair:
-  - 'roles/clair/**/*'
+  - changed-files:
+      - any-glob-to-any-file: 'roles/clair/**/*'
 
 role:mirror:
-  - 'roles/mirror/**/*'
+  - changed-files:
+      - any-glob-to-any-file: 'roles/mirror/**/*'
 
 # Playbook changes
 playbook:
-  - 'playbooks/**/*'
+  - changed-files:
+      - any-glob-to-any-file: 'playbooks/**/*'
 
 # Configuration changes
 configuration:
-  - 'inventory/**/*'
-  - 'ansible.cfg'
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'inventory/**/*'
+          - 'ansible.cfg'
 
 # GitHub workflows and CI/CD
 ci-cd:
-  - '.github/workflows/**/*'
-  - '.github/actions/**/*'
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/workflows/**/*'
+          - '.github/actions/**/*'
 
 # Scripts
 scripts:
-  - 'scripts/**/*'
+  - changed-files:
+      - any-glob-to-any-file: 'scripts/**/*'
 
 # Dependencies
 dependencies:
-  - '.github/dependabot.yml'
-  - 'requirements.txt'
-  - 'requirements.yml'
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/dependabot.yml'
+          - 'requirements.txt'
+          - 'requirements.yml'

@@ -57,8 +57,8 @@
     cmd: >
       podman exec {{ postgresql_container_name }}
       pg_isready -U {{ postgresql_user }} -d {{ postgresql_database }}
-  register: pg_ready
-  until: pg_ready.rc == 0
+  register: postgresql_ready
+  until: postgresql_ready.rc == 0
   retries: "{{ postgresql_health_check_retries }}"
   delay: "{{ postgresql_health_check_delay }}"
   changed_when: false
@@ -69,9 +69,9 @@
       podman exec {{ postgresql_container_name }}
       psql -U {{ postgresql_user }} -d {{ postgresql_database }}
       -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
-  register: pg_trgm_result
-  changed_when: "'CREATE EXTENSION' in pg_trgm_result.stdout"
-  failed_when: pg_trgm_result.rc != 0 and 'already exists' not in pg_trgm_result.stderr
+  register: postgresql_trgm_result
+  changed_when: "'CREATE EXTENSION' in postgresql_trgm_result.stdout"
+  failed_when: postgresql_trgm_result.rc != 0 and 'already exists' not in postgresql_trgm_result.stderr
 
 - name: Create Clair database (if Clair enabled)
   ansible.builtin.command:
@@ -79,9 +79,9 @@
       podman exec {{ postgresql_container_name }}
       psql -U {{ postgresql_user }}
       -c "CREATE DATABASE {{ clair_postgresql_database }};"
-  register: clair_db_result
-  changed_when: "'CREATE DATABASE' in clair_db_result.stdout"
-  failed_when: clair_db_result.rc != 0 and 'already exists' not in clair_db_result.stderr
+  register: postgresql_clair_db_result
+  changed_when: "'CREATE DATABASE' in postgresql_clair_db_result.stdout"
+  failed_when: postgresql_clair_db_result.rc != 0 and 'already exists' not in postgresql_clair_db_result.stderr
   when: quay_enable_clair | bool
 
 - name: Display PostgreSQL connection info
