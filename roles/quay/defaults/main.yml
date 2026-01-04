@@ -2,11 +2,8 @@
 # Quay Role Defaults
 # ==================
 
-# Configuration directory
-quay_config_dir: "{{ quay_base_dir }}/config"
+# Directories are now defined in inventory/group_vars/all/quay.yml
 
-# Storage directory
-quay_storage_dir: "{{ quay_base_dir }}/storage"
 
 # Storage UID for ACL (Quay runs as UID 1001)
 quay_storage_uid: 1001
