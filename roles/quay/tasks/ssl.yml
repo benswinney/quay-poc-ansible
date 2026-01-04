@@ -107,3 +107,21 @@
   when:
     - quay_ssl_mode != 'none'
     - not (quay_ssl_cert_stat.stat.exists and quay_ssl_key_stat.stat.exists)
+
+- name: Set ACL for SSL certificate file
+  ansible.posix.acl:
+    path: "{{ quay_config_dir }}/ssl.cert"
+    entity: "{{ quay_storage_uid }}"
+    etype: user
+    permissions: r
+    state: present
+  when: quay_ssl_cert_stat.stat.exists
+
+- name: Set ACL for SSL key file
+  ansible.posix.acl:
+    path: "{{ quay_config_dir }}/ssl.key"
+    entity: "{{ quay_storage_uid }}"
+    etype: user
+    permissions: r
+    state: present
+  when: quay_ssl_key_stat.stat.exists
