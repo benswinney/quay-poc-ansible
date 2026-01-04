@@ -22,17 +22,17 @@
       ansible.builtin.stat:
         path: "{{ playbook_dir }}/../inventory/group_vars/all/vault.yml"
       register: vault_check
-      
+
     - name: Fail if vault not configured
       ansible.builtin.fail:
         msg: |
           ❌ Vault file not found!
-          
+
           Please create and configure the vault file:
             1. cp inventory/group_vars/all/vault.yml.example inventory/group_vars/all/vault.yml
             2. Edit vault.yml with your actual credentials
             3. Encrypt: ansible-vault encrypt inventory/group_vars/all/vault.yml
-          
+
           Then run the playbook again with --ask-vault-pass
       when: not vault_check.stat.exists
 
@@ -43,7 +43,7 @@
           - groups['quay_servers'] | length > 0
         fail_msg: |
           ❌ No hosts configured in inventory!
-          
+
           Please edit inventory/hosts.yml and configure at least one host:
             quay_servers:
               hosts:
@@ -63,7 +63,7 @@
       ansible.builtin.fail:
         msg: |
           ❌ Required collection 'ansible.posix' not found!
-          
+
           Install with: ansible-galaxy collection install ansible.posix
       when: "'ansible.posix' not in collection_list.stdout"
 
@@ -71,19 +71,19 @@
       ansible.builtin.fail:
         msg: |
           ❌ Required collection 'containers.podman' not found!
-          
+
           Install with: ansible-galaxy collection install containers.podman
       when: "'containers.podman' not in collection_list.stdout"
 
     - name: Display pre-flight validation success
       ansible.builtin.debug:
         msg: |
-          
+
           ✓ Pre-flight validation passed!
           ✓ Vault file exists
           ✓ Inventory configured
           ✓ Required collections installed
-          
+
           Proceeding with deployment...
 
 
@@ -173,7 +173,7 @@
           ║                                                              ║
           ║  Next steps:                                                 ║
           ║    1. Access web UI at https://{{ quay_hostname }}{{ '' | indent(13 - quay_hostname | length) }}║
-          ║    2. Create your admin account ({{ quay_superusers[0] | default('quayadmin') }}){{ '' | indent(18 - (quay_superusers[0] | default('quayadmin')) | length) }}║
+          ║    2. Create admin account ({{ quay_superusers[0] | default('quayadmin') }})                ║
           ║    3. Create organizations and repositories                  ║
           ║                                                              ║
           {% if quay_ssl_mode | default('selfsigned') == 'selfsigned' %}

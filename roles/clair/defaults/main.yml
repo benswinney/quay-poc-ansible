@@ -6,13 +6,6 @@
 clair_config_dir: "{{ quay_base_dir }}/clair-config"
 
 # Health check settings
-clair_health_check_retries: 60
-clair_health_check_delay: 10
-
-# Clair configuration directory
-clair_config_dir: "{{ quay_base_dir }}/clair-config"
-
-# Health check settings
 clair_health_check_retries: 30
 clair_health_check_delay: 10
 
