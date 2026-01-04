@@ -28,7 +28,7 @@ notifier:
 
 auth:
   psk:
-    key: {{ vault_quay_secret_key }}
+    key: {{ vault_quay_secret_key | b64encode }}
     iss:
       - quay
       - clairctl
