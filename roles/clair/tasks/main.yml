@@ -8,6 +8,14 @@
     state: directory
     mode: '0755'
 
+- name: Set ACL for Clair configuration directory
+  ansible.posix.acl:
+    path: "{{ clair_config_dir }}"
+    entity: "{{ clair_uid }}"
+    etype: user
+    permissions: rx
+    state: present
+
 - name: Generate Clair configuration file
   ansible.builtin.template:
     src: clair-config.yaml.j2
@@ -15,6 +23,15 @@
     mode: '0600'
   no_log: true
   notify: Restart clair container
+
+- name: Set ACL for Clair configuration file
+  ansible.posix.acl:
+    path: "{{ clair_config_dir }}/config.yaml"
+    entity: "{{ clair_uid }}"
+    etype: user
+    permissions: r
+    state: present
+
 
 - name: Pull Clair container image
   containers.podman.podman_image:
