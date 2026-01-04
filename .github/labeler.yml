@@ -1,0 +1,47 @@
+# Documentation changes
+documentation:
+  - '**/*.md'
+  - 'docs/**/*'
+
+# Role-specific labels
+role:common:
+  - 'roles/common/**/*'
+
+role:postgresql:
+  - 'roles/postgresql/**/*'
+
+role:redis:
+  - 'roles/redis/**/*'
+
+role:quay:
+  - 'roles/quay/**/*'
+
+role:clair:
+  - 'roles/clair/**/*'
+
+role:mirror:
+  - 'roles/mirror/**/*'
+
+# Playbook changes
+playbook:
+  - 'playbooks/**/*'
+
+# Configuration changes
+configuration:
+  - 'inventory/**/*'
+  - 'ansible.cfg'
+
+# GitHub workflows and CI/CD
+ci-cd:
+  - '.github/workflows/**/*'
+  - '.github/actions/**/*'
+
+# Scripts
+scripts:
+  - 'scripts/**/*'
+
+# Dependencies
+dependencies:
+  - '.github/dependabot.yml'
+  - 'requirements.txt'
+  - 'requirements.yml'

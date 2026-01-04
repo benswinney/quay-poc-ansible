@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/benswinney/quay-poc-ansible/blob/main/README.md
+    about: Please check the README for setup instructions and usage examples
+  - name: Development Guide
+    url: https://github.com/benswinney/quay-poc-ansible/blob/main/CLAUDE.md
+    about: Comprehensive development guide with architecture details and troubleshooting
+  - name: Security Policy
+    url: https://github.com/benswinney/quay-poc-ansible/blob/main/SECURITY.md
+    about: For security vulnerabilities, please follow our security policy
+  - name: Contributing Guidelines
+    url: https://github.com/benswinney/quay-poc-ansible/blob/main/CONTRIBUTING.md
+    about: Learn how to contribute to this project

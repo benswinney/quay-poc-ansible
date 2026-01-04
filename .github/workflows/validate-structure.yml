@@ -1,0 +1,70 @@
+name: Validate Project Structure
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  validate:
+    name: Validate Structure
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate required files
+        run: |
+          required_files=(
+            "README.md"
+            "CLAUDE.md"
+            "ansible.cfg"
+            "playbooks/site.yml"
+            "inventory/group_vars/all/vault.yml.example"
+            "scripts/validate-setup.sh"
+          )
+
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "ERROR: Required file missing: $file"
+              exit 1
+            fi
+          done
+
+          echo "✅ All required files present"
+
+      - name: Check for sensitive files
+        run: |
+          if [ -f "inventory/group_vars/all/vault.yml" ]; then
+            echo "❌ ERROR: vault.yml should not be committed!"
+            echo "Only vault.yml.example should be in the repository."
+            exit 1
+          fi
+
+          echo "✅ No sensitive files detected"
+
+      - name: Validate role structure
+        run: |
+          roles=(
+            "common"
+            "postgresql"
+            "redis"
+            "quay"
+            "clair"
+            "mirror"
+          )
+
+          for role in "${roles[@]}"; do
+            if [ ! -d "roles/$role" ]; then
+              echo "ERROR: Role directory missing: roles/$role"
+              exit 1
+            fi
+            if [ ! -f "roles/$role/tasks/main.yml" ]; then
+              echo "ERROR: Missing tasks/main.yml in role: $role"
+              exit 1
+            fi
+          done
+
+          echo "✅ All roles have proper structure"
