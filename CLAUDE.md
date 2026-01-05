@@ -98,7 +98,11 @@ quay_servers:
 **5. Configure Variables**
 
 Edit `inventory/group_vars/all/main.yml`:
-- Set `quay_hostname` to your server's FQDN or IP
+- Set `quay_hostname` to your server's FQDN or IP (external access hostname)
+- Configure internal service communication:
+  - `quay_db_host: localhost` (default, for single-node deployment)
+  - `quay_redis_host: localhost` (default, for single-node deployment)
+  - **Note**: Only change these if PostgreSQL/Redis are on different hosts
 - Choose distribution:
   - `quay_distribution: project` (open source, default)
   - `quay_distribution: redhat` (enterprise, requires credentials)
@@ -680,6 +684,12 @@ The playbook follows this execution order:
 - `quay_distribution`: `project` (default) or `redhat`
   - Automatically selects correct container images from `quay_distribution_images` mapping in `quay.yml`
 
+**Internal Service Communication** (`inventory/group_vars/all/main.yml`):
+- `quay_db_host`: `localhost` (default) - PostgreSQL connection host for Quay and Clair containers
+- `quay_redis_host`: `localhost` (default) - Redis connection host for Quay container
+- **Important**: These defaults work for single-node deployments where all containers run on the same host
+- **When to change**: Only modify if deploying PostgreSQL/Redis on separate hosts (not standard for this PoC)
+
 **Component Toggles**:
 - `quay_enable_clair`: `true`/`false` - Controls Clair deployment
 - `quay_enable_mirror`: `true`/`false` - Controls Mirror worker deployment
@@ -1008,6 +1018,24 @@ Provided mode:
   sudo podman logs postgresql-quay
   ```
 - **Credential check**: Ensure `vault_postgresql_password` matches in vault and is correctly referenced
+
+**❌ "unable to open database file" SQLite Error in Quay**
+- **Cause**: Quay cannot connect to PostgreSQL and falls back to SQLite (which fails)
+- **Error**: `sqlite3.OperationalError: unable to open database file` in Quay container logs
+- **Root cause**: Incorrect database host in configuration - typically when `quay_db_host` is set to an unreachable hostname
+- **Diagnosis**:
+  ```bash
+  # Check Quay configuration
+  sudo podman exec quay cat /conf/stack/config.yaml | grep DB_URI
+
+  # Should show: postgresql://...@localhost:5432/quay (for single-node deployment)
+  # If it shows a different hostname that's unreachable, that's the problem
+  ```
+- **Fix**:
+  1. Verify `quay_db_host: localhost` is set in `inventory/group_vars/all/main.yml`
+  2. If using a custom hostname, ensure it resolves correctly from within the Quay container
+  3. Redeploy Quay role: `ansible-playbook playbooks/site.yml --tags quay --ask-vault-pass`
+- **Reference**: `inventory/group_vars/all/main.yml:40-41` for database host configuration
 
 ### SSL/TLS Issues
 

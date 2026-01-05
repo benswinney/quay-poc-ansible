@@ -7,17 +7,17 @@ SERVER_HOSTNAME: {{ quay_hostname }}
 PREFERRED_URL_SCHEME: https
 
 # Database Configuration
-DB_URI: postgresql://{{ postgresql_user }}:{{ vault_postgresql_password }}@{{ quay_hostname }}:{{ postgresql_port }}/{{ postgresql_database }}
+DB_URI: postgresql://{{ postgresql_user }}:{{ vault_postgresql_password }}@{{ quay_db_host }}:{{ postgresql_port }}/{{ postgresql_database }}
 DATABASE_SECRET_KEY: {{ vault_quay_database_secret }}
 
 # Redis Configuration
 BUILDLOGS_REDIS:
-  host: {{ quay_hostname }}
+  host: {{ quay_redis_host }}
   port: {{ redis_port }}
   password: {{ vault_redis_password }}
 
 USER_EVENTS_REDIS:
-  host: {{ quay_hostname }}
+  host: {{ quay_redis_host }}
   port: {{ redis_port }}
   password: {{ vault_redis_password }}
 
