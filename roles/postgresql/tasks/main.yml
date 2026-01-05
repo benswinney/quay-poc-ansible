@@ -35,9 +35,9 @@
     - "{{ quay_container_name }}"
     - "{{ clair_container_name }}"
     - "{{ mirror_container_name }}"
-  register: dependent_remove
+  register: postgresql_dependent_remove
   failed_when: false
-  changed_when: dependent_remove.rc == 0
+  changed_when: postgresql_dependent_remove.rc == 0
 
 - name: Create and start PostgreSQL container
   containers.podman.podman_container:
