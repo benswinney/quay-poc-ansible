@@ -14,6 +14,8 @@ Ansible playbook for deploying [Project Quay](https://www.projectquay.io/) or [R
 - **SSL Flexibility**: Self-signed certificates (default) or bring your own
 - **Secure Credentials**: All secrets stored in Ansible Vault encrypted files
 - **Idempotent**: Safe to run multiple times
+- **Restart Persistence**: Containers automatically restart on system reboot with proper dependency ordering
+- **Makefile Interface**: Simple `make` commands for deployment and management
 
 ## Requirements
 
@@ -102,7 +104,19 @@ quay_ssl_mode: selfsigned
 
 **Important:** The playbook will validate that you've changed the hostname from the default example values.
 
-### 7. Run the Playbook
+### 7. Deploy
+
+**Option A: Using Makefile (Recommended)**
+
+```bash
+# See all available commands
+make help
+
+# Deploy (automatically runs validation first)
+make deploy
+```
+
+**Option B: Using Ansible directly**
 
 ```bash
 ansible-playbook playbooks/site.yml --ask-vault-pass --ask-become-pass
@@ -189,26 +203,64 @@ quay-poc-ansible/
 
 ## Usage Examples
 
-### Deploy Everything
+### Using Makefile Commands
 
 ```bash
-ansible-playbook playbooks/site.yml --ask-vault-pass --ask-become-pass
+# Deploy entire environment
+make deploy
+
+# Check status of all services
+make status
+
+# View logs
+make logs
+
+# View logs for specific container
+make logs CONTAINER=quay
+
+# Restart all services
+make restart
+
+# Deploy specific components
+make deploy-tags TAGS=postgresql,redis
+
+# Dry run (check mode)
+make deploy-check
+
+# Check container health
+make health
+
+# Show container resource usage
+make stats
 ```
 
-### Deploy Specific Components
+### Using Ansible Directly
 
 ```bash
-# Only deploy database and cache
+# Deploy everything
+ansible-playbook playbooks/site.yml --ask-vault-pass --ask-become-pass
+
+# Deploy specific components
 ansible-playbook playbooks/site.yml --tags postgresql,redis --ask-vault-pass --ask-become-pass
 
 # Skip Clair
 ansible-playbook playbooks/site.yml --skip-tags clair --ask-vault-pass --ask-become-pass
+
+# Check mode (dry run)
+ansible-playbook playbooks/site.yml --check --ask-vault-pass --ask-become-pass
 ```
 
-### Check Mode (Dry Run)
+### Service Management
 
 ```bash
-ansible-playbook playbooks/site.yml --check --ask-vault-pass --ask-become-pass
+# Start all services
+make start
+
+# Stop all services
+make stop
+
+# Restart all services
+make restart
 ```
 
 ## Post-Deployment
@@ -249,13 +301,34 @@ For production deployments, refer to the official documentation:
 
 ## Troubleshooting
 
-### Check Container Status
+### Using Makefile
+
+```bash
+# Check status of all services and containers
+make status
+
+# Check container health
+make health
+
+# View logs for all containers
+make logs
+
+# View logs for specific container
+make logs-follow CONTAINER=quay
+
+# Check resource usage
+make stats
+```
+
+### Manual Commands
+
+**Check Container Status**
 
 ```bash
 sudo podman ps -a
 ```
 
-### View Container Logs
+**View Container Logs**
 
 ```bash
 sudo podman logs quay
@@ -264,13 +337,13 @@ sudo podman logs redis-quay
 sudo podman logs clair
 ```
 
-### Verify Database Connection
+**Verify Database Connection**
 
 ```bash
 sudo podman exec -it postgresql-quay psql -U quayuser -d quay -c "SELECT 1;"
 ```
 
-### Check Quay Health
+**Check Quay Health**
 
 ```bash
 curl -k https://localhost/health/instance

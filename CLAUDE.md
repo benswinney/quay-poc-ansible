@@ -149,7 +149,123 @@ The playbook will display a deployment summary upon completion with access URLs 
 
 ## Essential Commands
 
-### Running the Playbook
+### Using the Makefile (Recommended)
+
+The project includes a comprehensive Makefile that simplifies deployment and management tasks. Run `make help` to see all available commands.
+
+**Quick Start**
+
+```bash
+# Display all available commands
+make help
+
+# Deploy the entire POC environment (runs validation first)
+make deploy
+
+# Check status of all services
+make status
+
+# View logs for all containers
+make logs
+
+# View logs for a specific container
+make logs CONTAINER=quay
+
+# Restart all services
+make restart
+```
+
+**Deployment Commands**
+
+```bash
+# Validate setup before deployment
+make validate
+
+# Deploy with validation
+make deploy
+
+# Dry run (check what would change without applying)
+make deploy-check
+
+# Deploy specific components only
+make deploy-tags TAGS=postgresql,redis,quay
+```
+
+**Service Management**
+
+```bash
+# Start all Quay services on target host
+make start
+
+# Stop all Quay services on target host
+make stop
+
+# Restart all services
+make restart
+
+# Check service and container status
+make status
+
+# Check container health
+make health
+```
+
+**Monitoring & Debugging**
+
+```bash
+# View recent logs from all containers
+make logs
+
+# Follow logs for a specific container
+make logs-follow CONTAINER=quay
+
+# Show container resource usage
+make stats
+```
+
+**Testing**
+
+```bash
+# Test Quay registry functionality
+make test-registry
+
+# Test restart persistence (requires reboot access)
+make test-restart
+```
+
+**Vault Management**
+
+```bash
+# Edit encrypted vault
+make vault-edit
+
+# View encrypted vault
+make vault-view
+
+# Encrypt vault file
+make vault-encrypt
+
+# Decrypt vault file
+make vault-decrypt
+```
+
+**Development**
+
+```bash
+# Check playbook syntax
+make syntax-check
+
+# List all tasks
+make list-tasks
+
+# List all tags
+make list-tags
+
+# Show deployment information
+make info
+```
+
+### Running the Playbook (Alternative to Makefile)
 
 ```bash
 # Full deployment
