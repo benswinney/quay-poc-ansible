@@ -26,6 +26,19 @@
     name: "{{ postgresql_container_name }}"
   register: postgresql_container_check
 
+# Stop systemd services first to prevent auto-restart race condition
+- name: Stop and disable dependent systemd services
+  ansible.builtin.systemd:
+    name: "container-{{ item }}.service"
+    state: stopped
+    enabled: false
+  loop:
+    - "{{ quay_container_name }}"
+    - "{{ clair_container_name }}"
+    - "{{ mirror_container_name }}"
+  failed_when: false
+  register: postgresql_dependent_services_stop
+
 # Force remove dependent containers to ensure PostgreSQL can be updated/recreated
 # This prevents "container has dependent containers" errors
 - name: Remove dependent containers before PostgreSQL operations
