@@ -28,13 +28,18 @@ OPTIONAL_SERVICES := $(CLAIR_SERVICE) $(MIRROR_SERVICE)
 SSH_HOST ?= $(shell grep -A 5 'quay_servers:' $(INVENTORY) | grep 'ansible_host:' | head -1 | awk '{print $$2}')
 SSH_USER ?= $(shell grep -A 5 'quay_servers:' $(INVENTORY) | grep 'ansible_user:' | head -1 | awk '{print $$2}')
 
+# Optional: Set BECOME_PASSWORD_FILE to avoid sudo password prompts
+# Example: export BECOME_PASSWORD_FILE=~/.ansible/become_pass
+# Or configure passwordless sudo on target host
+BECOME_OPTS := $(if $(BECOME_PASSWORD_FILE),--become-password-file=$(BECOME_PASSWORD_FILE),)
+
 # For commands that need vault access (start/stop services)
-ANSIBLE_CMD := ansible quay_servers -i $(INVENTORY) --become
+ANSIBLE_CMD := ansible quay_servers -i $(INVENTORY) --become $(BECOME_OPTS)
 ANSIBLE_CMD_SHELL := $(ANSIBLE_CMD) -m shell -a
 
 # For monitoring commands that don't need vault (status, logs, health)
 # Uses direct host connection to bypass group_vars loading
-ANSIBLE_MONITOR_CMD := ansible all -i '$(SSH_HOST),' -u $(SSH_USER) --become
+ANSIBLE_MONITOR_CMD := ansible all -i '$(SSH_HOST),' -u $(SSH_USER) --become $(BECOME_OPTS)
 ANSIBLE_MONITOR_SHELL := $(ANSIBLE_MONITOR_CMD) -m shell -a
 
 ##@ General
@@ -269,6 +274,15 @@ info: ## Display deployment information
 	@echo "  - Quay:       $(QUAY_SERVICE)"
 	@echo "  - Clair:      $(CLAIR_SERVICE) (optional)"
 	@echo "  - Mirror:     $(MIRROR_SERVICE) (optional)"
+	@echo ""
+	@echo "Sudo Configuration:"
+	@echo "  To avoid sudo password prompts, choose one option:"
+	@echo "  1. Set BECOME_PASSWORD_FILE environment variable:"
+	@echo "     export BECOME_PASSWORD_FILE=~/.ansible/become_pass"
+	@echo "     echo 'your_sudo_password' > ~/.ansible/become_pass"
+	@echo "     chmod 600 ~/.ansible/become_pass"
+	@echo "  2. Configure passwordless sudo on target host:"
+	@echo "     echo '$(SSH_USER) ALL=(ALL) NOPASSWD: ALL' | sudo tee /etc/sudoers.d/$(SSH_USER)"
 	@echo ""
 	@echo "Run 'make help' to see all available commands"
 
