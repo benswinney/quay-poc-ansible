@@ -149,7 +149,123 @@ The playbook will display a deployment summary upon completion with access URLs 
 
 ## Essential Commands
 
-### Running the Playbook
+### Using the Makefile (Recommended)
+
+The project includes a comprehensive Makefile that simplifies deployment and management tasks. Run `make help` to see all available commands.
+
+**Quick Start**
+
+```bash
+# Display all available commands
+make help
+
+# Deploy the entire POC environment (runs validation first)
+make deploy
+
+# Check status of all services
+make status
+
+# View logs for all containers
+make logs
+
+# View logs for a specific container
+make logs CONTAINER=quay
+
+# Restart all services
+make restart
+```
+
+**Deployment Commands**
+
+```bash
+# Validate setup before deployment
+make validate
+
+# Deploy with validation
+make deploy
+
+# Dry run (check what would change without applying)
+make deploy-check
+
+# Deploy specific components only
+make deploy-tags TAGS=postgresql,redis,quay
+```
+
+**Service Management**
+
+```bash
+# Start all Quay services on target host
+make start
+
+# Stop all Quay services on target host
+make stop
+
+# Restart all services
+make restart
+
+# Check service and container status
+make status
+
+# Check container health
+make health
+```
+
+**Monitoring & Debugging**
+
+```bash
+# View recent logs from all containers
+make logs
+
+# Follow logs for a specific container
+make logs-follow CONTAINER=quay
+
+# Show container resource usage
+make stats
+```
+
+**Testing**
+
+```bash
+# Test Quay registry functionality
+make test-registry
+
+# Test restart persistence (requires reboot access)
+make test-restart
+```
+
+**Vault Management**
+
+```bash
+# Edit encrypted vault
+make vault-edit
+
+# View encrypted vault
+make vault-view
+
+# Encrypt vault file
+make vault-encrypt
+
+# Decrypt vault file
+make vault-decrypt
+```
+
+**Development**
+
+```bash
+# Check playbook syntax
+make syntax-check
+
+# List all tasks
+make list-tasks
+
+# List all tags
+make list-tags
+
+# Show deployment information
+make info
+```
+
+### Running the Playbook (Alternative to Makefile)
 
 ```bash
 # Full deployment
@@ -237,6 +353,57 @@ sudo podman logs quay | tail -50
 sudo podman logs postgresql-quay | tail -20
 sudo podman logs redis-quay | tail -20
 sudo podman logs clair | tail -20  # if enabled
+```
+
+**Restart Persistence Testing**
+
+```bash
+# Verify systemd services are enabled and active
+sudo systemctl list-unit-files | grep container-
+# Expected: container-postgresql-quay.service, container-redis-quay.service,
+# container-quay.service (and optionally container-clair.service, container-quay-mirror.service)
+
+# Check podman-restart.service is enabled
+sudo systemctl is-enabled podman-restart.service
+# Expected: enabled
+
+# Verify container health checks are configured
+sudo podman inspect postgresql-quay | jq '.[0].Config.Healthcheck'
+sudo podman inspect redis-quay | jq '.[0].Config.Healthcheck'
+sudo podman inspect quay | jq '.[0].Config.Healthcheck'
+
+# Check container dependencies
+sudo podman inspect quay | jq '.[0].HostConfig.DependsOn'
+# Expected: Shows postgresql-quay and redis-quay dependencies
+
+# Test restart persistence (requires reboot access)
+# 1. Note current container uptime
+sudo podman ps --format "{{.Names}} {{.Status}}"
+
+# 2. Reboot the system
+sudo systemctl reboot
+
+# 3. After reboot, verify all containers auto-started
+sudo podman ps
+# Expected: All containers (postgresql-quay, redis-quay, quay, clair, quay-mirror)
+# should be running with fresh uptime
+
+# 4. Check systemd service status
+sudo systemctl status container-quay.service
+sudo systemctl status container-postgresql-quay.service
+sudo systemctl status container-redis-quay.service
+
+# 5. Verify health checks are passing
+sudo podman healthcheck run postgresql-quay
+sudo podman healthcheck run redis-quay
+sudo podman healthcheck run quay
+# Expected: healthy (exit code 0)
+
+# 6. Test container restart on failure
+sudo podman stop quay
+# Wait a few seconds
+sudo podman ps | grep quay
+# Expected: Container should auto-restart due to restart_policy: always
 ```
 
 **Integration Testing**
@@ -553,6 +720,48 @@ All services run as rootless Podman containers with `restart_policy: always`:
 - **quay**: Ports 80 (HTTP), 443 (HTTPS)
 - **clair**: Ports 6060 (HTTP), 6061 (introspection)
 - **quay-mirror**: No exposed ports
+
+### Restart Persistence
+
+The deployment includes comprehensive restart persistence features to ensure the POC environment survives system reboots:
+
+**Systemd Integration**:
+- **podman.socket**: Enabled for Podman API access
+- **podman-restart.service**: Automatically restarts containers with `restart_policy: always` on system boot
+- **Systemd unit files**: Generated for each container (`container-<name>.service`) for fine-grained control
+
+**Container Health Checks**:
+- **PostgreSQL**: `pg_isready` health check (30s start period, 10s interval)
+- **Redis**: `redis-cli ping` health check (10s start period, 10s interval)
+- **Quay**: HTTP health endpoint check (60s start period, 30s interval)
+- **Clair**: HTTP health endpoint check (60s start period, 30s interval)
+
+**Container Dependencies**:
+- **Quay** requires PostgreSQL and Redis containers to be running
+- **Clair** requires PostgreSQL container to be running
+- **Mirror worker** requires Quay, PostgreSQL, and Redis containers to be running
+- Dependencies ensure proper startup order after system reboot
+
+**How It Works**:
+1. On system boot, systemd starts `podman-restart.service`
+2. Generated systemd unit files ensure containers start in dependency order
+3. Health checks verify each service is fully operational before dependents start
+4. If a container fails, Podman automatically restarts it based on `restart_policy: always`
+
+**Verifying Restart Persistence**:
+```bash
+# Check systemd services are enabled
+sudo systemctl list-unit-files | grep container-
+
+# Check container dependencies
+podman inspect postgresql-quay | jq '.[0].HostConfig.RestartPolicy'
+podman inspect quay | jq '.[0].HostConfig.Requires'
+
+# Simulate system restart (containers should auto-start)
+sudo systemctl reboot
+# After reboot:
+sudo podman ps  # All containers should be running
+```
 
 ## Key File References
 

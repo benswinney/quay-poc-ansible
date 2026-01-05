@@ -73,6 +73,14 @@
       - "{{ quay_config_dir }}:/conf/stack:Z"
       - "{{ quay_storage_dir }}:/datastorage:Z"
     restart_policy: always
+    requires:
+      - "{{ postgresql_container_name }}"
+      - "{{ redis_container_name }}"
+    healthcheck: "CMD-SHELL curl -f https://localhost:8443/health/instance -k || exit 1"
+    healthcheck_interval: "30s"
+    healthcheck_timeout: "10s"
+    healthcheck_retries: 3
+    healthcheck_start_period: "60s"
 
 - name: Ensure Quay container is running
   containers.podman.podman_container:
@@ -88,6 +96,26 @@
   until: quay_health.status == 200
   retries: "{{ quay_health_check_retries }}"
   delay: "{{ quay_health_check_delay }}"
+
+- name: Generate systemd unit file for Quay container
+  ansible.builtin.command:
+    cmd: >
+      podman generate systemd --new --name --files
+      --restart-policy=always
+      --requires=container-{{ postgresql_container_name }}.service
+      --requires=container-{{ redis_container_name }}.service
+      {{ quay_container_name }}
+    chdir: /etc/systemd/system
+  register: quay_systemd_result
+  changed_when: quay_systemd_result.rc == 0
+  failed_when: false
+
+- name: Enable Quay systemd service
+  ansible.builtin.systemd:
+    name: "container-{{ quay_container_name }}.service"
+    enabled: true
+    daemon_reload: true
+  when: quay_systemd_result.rc == 0
 
 - name: Display Quay access information
   ansible.builtin.debug:

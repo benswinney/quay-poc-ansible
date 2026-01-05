@@ -46,6 +46,11 @@
     volumes:
       - "{{ postgresql_data_dir }}:{% if quay_distribution == 'redhat' %}/var/lib/pgsql/data{% else %}/var/lib/postgresql/data{% endif %}:Z"
     restart_policy: always
+    healthcheck: "CMD-SHELL pg_isready -U {{ postgresql_user }} -d {{ postgresql_database }} || exit 1"
+    healthcheck_interval: "10s"
+    healthcheck_timeout: "5s"
+    healthcheck_retries: 5
+    healthcheck_start_period: "30s"
 
 - name: Ensure PostgreSQL container is running
   containers.podman.podman_container:
@@ -83,6 +88,24 @@
   changed_when: "'CREATE DATABASE' in postgresql_clair_db_result.stdout"
   failed_when: postgresql_clair_db_result.rc != 0 and 'already exists' not in postgresql_clair_db_result.stderr
   when: quay_enable_clair | bool
+
+- name: Generate systemd unit file for PostgreSQL container
+  ansible.builtin.command:
+    cmd: >
+      podman generate systemd --new --name --files
+      --restart-policy=always
+      {{ postgresql_container_name }}
+    chdir: /etc/systemd/system
+  register: postgresql_systemd_result
+  changed_when: postgresql_systemd_result.rc == 0
+  failed_when: false
+
+- name: Enable PostgreSQL systemd service
+  ansible.builtin.systemd:
+    name: "container-{{ postgresql_container_name }}.service"
+    enabled: true
+    daemon_reload: true
+  when: postgresql_systemd_result.rc == 0
 
 - name: Display PostgreSQL connection info
   ansible.builtin.debug:
