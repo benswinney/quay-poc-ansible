@@ -38,17 +38,17 @@
   failed_when: false
   changed_when: false
 
-# Stop dependent containers if they exist and are running
+# Remove dependent containers if they exist
 # This prevents "container has dependent containers" errors during PostgreSQL updates
-- name: Stop dependent containers before PostgreSQL operations
+# Dependent containers will be recreated by their respective roles
+- name: Remove dependent containers before PostgreSQL operations
   containers.podman.podman_container:
     name: "{{ item.item }}"
-    state: stopped
+    state: absent
   loop: "{{ postgresql_dependent_containers_check.results }}"
   when:
     - item.containers is defined
     - item.containers | length > 0
-    - item.containers[0].State.Running | default(false)
   failed_when: false
   changed_when: false
 
@@ -58,6 +58,7 @@
     image: "{{ postgresql_image }}"
     state: started
     recreate: false
+    delete_depend: true
     ports:
       - "{{ postgresql_port }}:5432"
     env:
