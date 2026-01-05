@@ -36,6 +36,8 @@
     - "{{ quay_container_name }}"
     - "{{ clair_container_name }}"
     - "{{ mirror_container_name }}"
+    - "{{ postgresql_container_name }}"
+    - "{{ redis_container_name }}"
   failed_when: false
   register: postgresql_dependent_services_stop
 
