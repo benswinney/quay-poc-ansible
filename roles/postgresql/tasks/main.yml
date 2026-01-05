@@ -30,7 +30,7 @@
 - name: Check if dependent containers exist
   containers.podman.podman_container_info:
     name: "{{ item }}"
-  register: dependent_containers_check
+  register: postgresql_dependent_containers_check
   loop:
     - "{{ quay_container_name }}"
     - "{{ clair_container_name }}"
@@ -44,7 +44,7 @@
   containers.podman.podman_container:
     name: "{{ item.item }}"
     state: stopped
-  loop: "{{ dependent_containers_check.results }}"
+  loop: "{{ postgresql_dependent_containers_check.results }}"
   when:
     - item.containers is defined
     - item.containers | length > 0
@@ -58,7 +58,6 @@
     image: "{{ postgresql_image }}"
     state: started
     recreate: false
-    force: true
     ports:
       - "{{ postgresql_port }}:5432"
     env:
