@@ -23,6 +23,11 @@
     command: >
       redis-server --requirepass {{ vault_redis_password }}
     restart_policy: always
+    healthcheck: "CMD-SHELL redis-cli -a {{ vault_redis_password }} ping || exit 1"
+    healthcheck_interval: "10s"
+    healthcheck_timeout: "5s"
+    healthcheck_retries: 5
+    healthcheck_start_period: "10s"
   no_log: true
 
 - name: Ensure Redis container is running
@@ -41,6 +46,24 @@
   delay: "{{ redis_health_check_delay }}"
   changed_when: false
   no_log: true
+
+- name: Generate systemd unit file for Redis container
+  ansible.builtin.command:
+    cmd: >
+      podman generate systemd --new --name --files
+      --restart-policy=always
+      {{ redis_container_name }}
+    chdir: /etc/systemd/system
+  register: redis_systemd_result
+  changed_when: redis_systemd_result.rc == 0
+  failed_when: false
+
+- name: Enable Redis systemd service
+  ansible.builtin.systemd:
+    name: "container-{{ redis_container_name }}.service"
+    enabled: true
+    daemon_reload: true
+  when: redis_systemd_result.rc == 0
 
 - name: Display Redis connection info
   ansible.builtin.debug:

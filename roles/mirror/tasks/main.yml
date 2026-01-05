@@ -24,6 +24,10 @@
       - "{{ quay_config_dir }}:/conf/stack:Z"
       - "{{ quay_storage_dir }}:/datastorage:Z"
     restart_policy: always
+    requires:
+      - "{{ quay_container_name }}"
+      - "{{ postgresql_container_name }}"
+      - "{{ redis_container_name }}"
   when: mirror_container_check.containers | length == 0
 
 - name: Verify Mirror worker is running
@@ -33,6 +37,27 @@
   until: mirror_status.containers | length > 0 and mirror_status.containers[0].State.Running
   retries: "{{ mirror_health_check_retries }}"
   delay: "{{ mirror_health_check_delay }}"
+
+- name: Generate systemd unit file for Mirror worker container
+  ansible.builtin.command:
+    cmd: >
+      podman generate systemd --new --name --files
+      --restart-policy=always
+      --requires=container-{{ quay_container_name }}.service
+      --requires=container-{{ postgresql_container_name }}.service
+      --requires=container-{{ redis_container_name }}.service
+      {{ mirror_container_name }}
+    chdir: /etc/systemd/system
+  register: mirror_systemd_result
+  changed_when: mirror_systemd_result.rc == 0
+  failed_when: false
+
+- name: Enable Mirror worker systemd service
+  ansible.builtin.systemd:
+    name: "container-{{ mirror_container_name }}.service"
+    enabled: true
+    daemon_reload: true
+  when: mirror_systemd_result.rc == 0
 
 - name: Display Mirror worker information
   ansible.builtin.debug:

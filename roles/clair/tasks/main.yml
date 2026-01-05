@@ -58,6 +58,13 @@
       CLAIR_CONF: /clair/config.yaml
       CLAIR_MODE: combo
     restart_policy: always
+    requires:
+      - "{{ postgresql_container_name }}"
+    healthcheck: "CMD-SHELL curl -f http://localhost:{{ clair_introspection_port }}/healthz || exit 1"
+    healthcheck_interval: "30s"
+    healthcheck_timeout: "10s"
+    healthcheck_retries: 3
+    healthcheck_start_period: "60s"
 
 - name: Ensure Clair container is running
   containers.podman.podman_container:
@@ -72,6 +79,25 @@
   until: clair_health.status == 200
   retries: "{{ clair_health_check_retries }}"
   delay: "{{ clair_health_check_delay }}"
+
+- name: Generate systemd unit file for Clair container
+  ansible.builtin.command:
+    cmd: >
+      podman generate systemd --new --name --files
+      --restart-policy=always
+      --requires=container-{{ postgresql_container_name }}.service
+      {{ clair_container_name }}
+    chdir: /etc/systemd/system
+  register: clair_systemd_result
+  changed_when: clair_systemd_result.rc == 0
+  failed_when: false
+
+- name: Enable Clair systemd service
+  ansible.builtin.systemd:
+    name: "container-{{ clair_container_name }}.service"
+    enabled: true
+    daemon_reload: true
+  when: clair_systemd_result.rc == 0
 
 - name: Display Clair information
   ansible.builtin.debug:

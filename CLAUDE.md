@@ -239,6 +239,57 @@ sudo podman logs redis-quay | tail -20
 sudo podman logs clair | tail -20  # if enabled
 ```
 
+**Restart Persistence Testing**
+
+```bash
+# Verify systemd services are enabled and active
+sudo systemctl list-unit-files | grep container-
+# Expected: container-postgresql-quay.service, container-redis-quay.service,
+# container-quay.service (and optionally container-clair.service, container-quay-mirror.service)
+
+# Check podman-restart.service is enabled
+sudo systemctl is-enabled podman-restart.service
+# Expected: enabled
+
+# Verify container health checks are configured
+sudo podman inspect postgresql-quay | jq '.[0].Config.Healthcheck'
+sudo podman inspect redis-quay | jq '.[0].Config.Healthcheck'
+sudo podman inspect quay | jq '.[0].Config.Healthcheck'
+
+# Check container dependencies
+sudo podman inspect quay | jq '.[0].HostConfig.DependsOn'
+# Expected: Shows postgresql-quay and redis-quay dependencies
+
+# Test restart persistence (requires reboot access)
+# 1. Note current container uptime
+sudo podman ps --format "{{.Names}} {{.Status}}"
+
+# 2. Reboot the system
+sudo systemctl reboot
+
+# 3. After reboot, verify all containers auto-started
+sudo podman ps
+# Expected: All containers (postgresql-quay, redis-quay, quay, clair, quay-mirror)
+# should be running with fresh uptime
+
+# 4. Check systemd service status
+sudo systemctl status container-quay.service
+sudo systemctl status container-postgresql-quay.service
+sudo systemctl status container-redis-quay.service
+
+# 5. Verify health checks are passing
+sudo podman healthcheck run postgresql-quay
+sudo podman healthcheck run redis-quay
+sudo podman healthcheck run quay
+# Expected: healthy (exit code 0)
+
+# 6. Test container restart on failure
+sudo podman stop quay
+# Wait a few seconds
+sudo podman ps | grep quay
+# Expected: Container should auto-restart due to restart_policy: always
+```
+
 **Integration Testing**
 
 ```bash
@@ -553,6 +604,48 @@ All services run as rootless Podman containers with `restart_policy: always`:
 - **quay**: Ports 80 (HTTP), 443 (HTTPS)
 - **clair**: Ports 6060 (HTTP), 6061 (introspection)
 - **quay-mirror**: No exposed ports
+
+### Restart Persistence
+
+The deployment includes comprehensive restart persistence features to ensure the POC environment survives system reboots:
+
+**Systemd Integration**:
+- **podman.socket**: Enabled for Podman API access
+- **podman-restart.service**: Automatically restarts containers with `restart_policy: always` on system boot
+- **Systemd unit files**: Generated for each container (`container-<name>.service`) for fine-grained control
+
+**Container Health Checks**:
+- **PostgreSQL**: `pg_isready` health check (30s start period, 10s interval)
+- **Redis**: `redis-cli ping` health check (10s start period, 10s interval)
+- **Quay**: HTTP health endpoint check (60s start period, 30s interval)
+- **Clair**: HTTP health endpoint check (60s start period, 30s interval)
+
+**Container Dependencies**:
+- **Quay** requires PostgreSQL and Redis containers to be running
+- **Clair** requires PostgreSQL container to be running
+- **Mirror worker** requires Quay, PostgreSQL, and Redis containers to be running
+- Dependencies ensure proper startup order after system reboot
+
+**How It Works**:
+1. On system boot, systemd starts `podman-restart.service`
+2. Generated systemd unit files ensure containers start in dependency order
+3. Health checks verify each service is fully operational before dependents start
+4. If a container fails, Podman automatically restarts it based on `restart_policy: always`
+
+**Verifying Restart Persistence**:
+```bash
+# Check systemd services are enabled
+sudo systemctl list-unit-files | grep container-
+
+# Check container dependencies
+podman inspect postgresql-quay | jq '.[0].HostConfig.RestartPolicy'
+podman inspect quay | jq '.[0].HostConfig.Requires'
+
+# Simulate system restart (containers should auto-start)
+sudo systemctl reboot
+# After reboot:
+sudo podman ps  # All containers should be running
+```
 
 ## Key File References
 

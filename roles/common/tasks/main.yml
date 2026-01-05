@@ -115,3 +115,20 @@
     extra_args: --user
   when: common_podman_compose_check.rc != 0
   become: false
+
+- name: Enable podman.socket for API access
+  ansible.builtin.systemd:
+    name: podman.socket
+    state: started
+    enabled: true
+
+- name: Enable podman-restart.service for container auto-start on boot
+  ansible.builtin.systemd:
+    name: podman-restart.service
+    enabled: true
+
+- name: Create systemd directory for Quay services
+  ansible.builtin.file:
+    path: /etc/systemd/system
+    state: directory
+    mode: '0755'
