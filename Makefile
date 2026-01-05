@@ -27,8 +27,15 @@ OPTIONAL_SERVICES := $(CLAIR_SERVICE) $(MIRROR_SERVICE)
 # Ansible ad-hoc command setup
 SSH_HOST ?= $(shell grep -A 5 'quay_servers:' $(INVENTORY) | grep 'ansible_host:' | head -1 | awk '{print $$2}')
 SSH_USER ?= $(shell grep -A 5 'quay_servers:' $(INVENTORY) | grep 'ansible_user:' | head -1 | awk '{print $$2}')
+
+# For commands that need vault access (start/stop services)
 ANSIBLE_CMD := ansible quay_servers -i $(INVENTORY) --become
 ANSIBLE_CMD_SHELL := $(ANSIBLE_CMD) -m shell -a
+
+# For monitoring commands that don't need vault (status, logs, health)
+# Uses direct host connection to bypass group_vars loading
+ANSIBLE_MONITOR_CMD := ansible all -i '$(SSH_HOST),' -u $(SSH_USER) --become
+ANSIBLE_MONITOR_SHELL := $(ANSIBLE_MONITOR_CMD) -m shell -a
 
 ##@ General
 
@@ -87,51 +94,51 @@ status: ## Check status of all Quay services on target host
 	@echo "Checking service status on $(SSH_HOST)..."
 	@echo ""
 	@echo "=== Systemd Services ==="
-	@$(ANSIBLE_CMD_SHELL) "systemctl status $(CORE_SERVICES) --no-pager -l || true"
-	@$(ANSIBLE_CMD_SHELL) "systemctl list-unit-files | grep -q $(CLAIR_SERVICE) && systemctl status $(CLAIR_SERVICE) --no-pager -l || true"
-	@$(ANSIBLE_CMD_SHELL) "systemctl list-unit-files | grep -q $(MIRROR_SERVICE) && systemctl status $(MIRROR_SERVICE) --no-pager -l || true"
+	@$(ANSIBLE_MONITOR_SHELL) "systemctl status $(CORE_SERVICES) --no-pager -l || true"
+	@$(ANSIBLE_MONITOR_SHELL) "systemctl list-unit-files | grep -q $(CLAIR_SERVICE) && systemctl status $(CLAIR_SERVICE) --no-pager -l || true"
+	@$(ANSIBLE_MONITOR_SHELL) "systemctl list-unit-files | grep -q $(MIRROR_SERVICE) && systemctl status $(MIRROR_SERVICE) --no-pager -l || true"
 	@echo ""
 	@echo "=== Container Status ==="
-	@$(ANSIBLE_CMD_SHELL) "podman ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
+	@$(ANSIBLE_MONITOR_SHELL) "podman ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
 
 health: ## Check health of all containers on target host
 	@echo "Checking container health on $(SSH_HOST)..."
 	@echo ""
 	@echo "=== PostgreSQL Health ==="
-	@$(ANSIBLE_CMD_SHELL) "podman healthcheck run postgresql-quay && echo '✓ Healthy' || echo '✗ Unhealthy'"
+	@$(ANSIBLE_MONITOR_SHELL) "podman healthcheck run postgresql-quay && echo '✓ Healthy' || echo '✗ Unhealthy'"
 	@echo ""
 	@echo "=== Redis Health ==="
-	@$(ANSIBLE_CMD_SHELL) "podman healthcheck run redis-quay && echo '✓ Healthy' || echo '✗ Unhealthy'"
+	@$(ANSIBLE_MONITOR_SHELL) "podman healthcheck run redis-quay && echo '✓ Healthy' || echo '✗ Unhealthy'"
 	@echo ""
 	@echo "=== Quay Health ==="
-	@$(ANSIBLE_CMD_SHELL) "podman healthcheck run quay && echo '✓ Healthy' || echo '✗ Unhealthy'"
+	@$(ANSIBLE_MONITOR_SHELL) "podman healthcheck run quay && echo '✓ Healthy' || echo '✗ Unhealthy'"
 	@echo ""
 	@echo "=== Quay Health Endpoint ==="
-	@$(ANSIBLE_CMD_SHELL) "curl -sk https://localhost/health/instance | jq . || echo '✗ Endpoint unavailable'"
+	@$(ANSIBLE_MONITOR_SHELL) "curl -sk https://localhost/health/instance | jq . || echo '✗ Endpoint unavailable'"
 	@echo ""
-	@$(ANSIBLE_CMD_SHELL) "systemctl list-unit-files | grep -q $(CLAIR_SERVICE) && echo '=== Clair Health ===' && podman healthcheck run clair && echo '✓ Healthy' || echo '✗ Unhealthy' || true"
+	@$(ANSIBLE_MONITOR_SHELL) "systemctl list-unit-files | grep -q $(CLAIR_SERVICE) && echo '=== Clair Health ===' && podman healthcheck run clair && echo '✓ Healthy' || echo '✗ Unhealthy' || true"
 
 ##@ Monitoring
 
 logs: ## Show logs for all containers (usage: make logs CONTAINER=quay)
 	@if [ -n "$(CONTAINER)" ]; then \
 		echo "Showing logs for $(CONTAINER)..."; \
-		$(ANSIBLE_CMD_SHELL) "podman logs -f $(CONTAINER)"; \
+		$(ANSIBLE_MONITOR_SHELL) "podman logs -f $(CONTAINER)"; \
 	else \
 		echo "Showing recent logs for all containers..."; \
 		echo ""; \
 		echo "=== PostgreSQL Logs ==="; \
-		$(ANSIBLE_CMD_SHELL) "podman logs --tail 20 postgresql-quay"; \
+		$(ANSIBLE_MONITOR_SHELL) "podman logs --tail 20 postgresql-quay"; \
 		echo ""; \
 		echo "=== Redis Logs ==="; \
-		$(ANSIBLE_CMD_SHELL) "podman logs --tail 20 redis-quay"; \
+		$(ANSIBLE_MONITOR_SHELL) "podman logs --tail 20 redis-quay"; \
 		echo ""; \
 		echo "=== Quay Logs ==="; \
-		$(ANSIBLE_CMD_SHELL) "podman logs --tail 50 quay"; \
+		$(ANSIBLE_MONITOR_SHELL) "podman logs --tail 50 quay"; \
 		echo ""; \
-		$(ANSIBLE_CMD_SHELL) "systemctl list-unit-files | grep -q $(CLAIR_SERVICE) && echo '=== Clair Logs ===' && podman logs --tail 20 clair || true"; \
+		$(ANSIBLE_MONITOR_SHELL) "systemctl list-unit-files | grep -q $(CLAIR_SERVICE) && echo '=== Clair Logs ===' && podman logs --tail 20 clair || true"; \
 		echo ""; \
-		$(ANSIBLE_CMD_SHELL) "systemctl list-unit-files | grep -q $(MIRROR_SERVICE) && echo '=== Mirror Logs ===' && podman logs --tail 20 quay-mirror || true"; \
+		$(ANSIBLE_MONITOR_SHELL) "systemctl list-unit-files | grep -q $(MIRROR_SERVICE) && echo '=== Mirror Logs ===' && podman logs --tail 20 quay-mirror || true"; \
 	fi
 
 logs-follow: ## Follow logs for a specific container (usage: make logs-follow CONTAINER=quay)
@@ -141,11 +148,11 @@ logs-follow: ## Follow logs for a specific container (usage: make logs-follow CO
 		exit 1; \
 	fi
 	@echo "Following logs for $(CONTAINER)..."
-	@$(ANSIBLE_CMD_SHELL) "podman logs -f $(CONTAINER)"
+	@$(ANSIBLE_MONITOR_SHELL) "podman logs -f $(CONTAINER)"
 
 stats: ## Show container resource usage on target host
 	@echo "Container resource usage on $(SSH_HOST)..."
-	@$(ANSIBLE_CMD_SHELL) "podman stats --no-stream"
+	@$(ANSIBLE_MONITOR_SHELL) "podman stats --no-stream"
 
 ##@ Testing
 
@@ -170,7 +177,7 @@ test-restart: ## Test restart persistence (requires reboot access)
 	@echo "Press Ctrl+C to cancel, or wait 10 seconds to continue..."
 	@sleep 10
 	@echo "Rebooting $(SSH_HOST)..."
-	@$(ANSIBLE_CMD_SHELL) "systemctl reboot" || true
+	@$(ANSIBLE_MONITOR_SHELL) "systemctl reboot" || true
 	@echo "Waiting 60 seconds for system to come back online..."
 	@sleep 60
 	@echo "Checking if services auto-started..."
@@ -185,7 +192,7 @@ clean-containers: ## Stop and remove all Quay containers (WARNING: destructive)
 	@echo "Stopping services..."
 	@$(MAKE) stop
 	@echo "Removing containers..."
-	@$(ANSIBLE_CMD_SHELL) "podman rm -f postgresql-quay redis-quay quay clair quay-mirror 2>/dev/null || true"
+	@$(ANSIBLE_MONITOR_SHELL) "podman rm -f postgresql-quay redis-quay quay clair quay-mirror 2>/dev/null || true"
 	@echo "✓ Containers removed"
 
 clean-data: ## Remove all Quay data (WARNING: extremely destructive)
@@ -194,17 +201,17 @@ clean-data: ## Remove all Quay data (WARNING: extremely destructive)
 	@sleep 15
 	@$(MAKE) clean-containers
 	@echo "Removing data directories..."
-	@$(ANSIBLE_CMD_SHELL) "rm -rf /opt/quay/*"
+	@$(ANSIBLE_MONITOR_SHELL) "rm -rf /opt/quay/*"
 	@echo "✓ Data removed"
 
 clean-systemd: ## Remove systemd unit files for Quay containers
 	@echo "Removing systemd unit files on $(SSH_HOST)..."
-	@$(ANSIBLE_CMD_SHELL) "rm -f /etc/systemd/system/container-postgresql-quay.service"
-	@$(ANSIBLE_CMD_SHELL) "rm -f /etc/systemd/system/container-redis-quay.service"
-	@$(ANSIBLE_CMD_SHELL) "rm -f /etc/systemd/system/container-quay.service"
-	@$(ANSIBLE_CMD_SHELL) "rm -f /etc/systemd/system/container-clair.service"
-	@$(ANSIBLE_CMD_SHELL) "rm -f /etc/systemd/system/container-quay-mirror.service"
-	@$(ANSIBLE_CMD_SHELL) "systemctl daemon-reload"
+	@$(ANSIBLE_MONITOR_SHELL) "rm -f /etc/systemd/system/container-postgresql-quay.service"
+	@$(ANSIBLE_MONITOR_SHELL) "rm -f /etc/systemd/system/container-redis-quay.service"
+	@$(ANSIBLE_MONITOR_SHELL) "rm -f /etc/systemd/system/container-quay.service"
+	@$(ANSIBLE_MONITOR_SHELL) "rm -f /etc/systemd/system/container-clair.service"
+	@$(ANSIBLE_MONITOR_SHELL) "rm -f /etc/systemd/system/container-quay-mirror.service"
+	@$(ANSIBLE_MONITOR_SHELL) "systemctl daemon-reload"
 	@echo "✓ Systemd unit files removed"
 
 ##@ Vault Management
