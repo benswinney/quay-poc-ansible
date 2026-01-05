@@ -52,10 +52,11 @@
   changed_when: mirror_systemd_result.rc == 0
   failed_when: false
 
-- name: Enable Mirror worker systemd service
+- name: Enable and start Mirror worker systemd service
   ansible.builtin.systemd:
     name: "container-{{ mirror_container_name }}.service"
     enabled: true
+    state: started
     daemon_reload: true
   when: mirror_systemd_result.rc == 0
 
