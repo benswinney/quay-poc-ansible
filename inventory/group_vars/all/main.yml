@@ -33,6 +33,13 @@ quay_ssl_cert_days: 365
 quay_http_port: 80
 quay_https_port: 443
 
+# Internal Service Communication
+# -------------------------------
+# Host for database and Redis connections from Quay container
+# Use 'localhost' for single-node deployment, or set to actual host IP/hostname
+quay_db_host: localhost
+quay_redis_host: localhost
+
 # Superuser Configuration
 # -----------------------
 quay_superusers:
