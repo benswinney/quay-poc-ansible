@@ -26,31 +26,18 @@
     name: "{{ postgresql_container_name }}"
   register: postgresql_container_check
 
-# Check for dependent containers before PostgreSQL operations
-- name: Check if dependent containers exist
-  containers.podman.podman_container_info:
-    name: "{{ item }}"
-  register: postgresql_dependent_containers_check
+# Force remove dependent containers to ensure PostgreSQL can be updated/recreated
+# This prevents "container has dependent containers" errors
+- name: Remove dependent containers before PostgreSQL operations
+  ansible.builtin.command:
+    cmd: podman rm -f {{ item }}
   loop:
     - "{{ quay_container_name }}"
     - "{{ clair_container_name }}"
     - "{{ mirror_container_name }}"
+  register: postgresql_dependent_remove
   failed_when: false
-  changed_when: false
-
-# Remove dependent containers if they exist
-# This prevents "container has dependent containers" errors during PostgreSQL updates
-# Dependent containers will be recreated by their respective roles
-- name: Remove dependent containers before PostgreSQL operations
-  containers.podman.podman_container:
-    name: "{{ item.item }}"
-    state: absent
-  loop: "{{ postgresql_dependent_containers_check.results }}"
-  when:
-    - item.containers is defined
-    - item.containers | length > 0
-  failed_when: false
-  changed_when: false
+  changed_when: postgresql_dependent_remove.rc == 0
 
 - name: Create and start PostgreSQL container
   containers.podman.podman_container:
