@@ -100,9 +100,9 @@ quay_servers:
 Edit `inventory/group_vars/all/main.yml`:
 - Set `quay_hostname` to your server's FQDN or IP (external access hostname)
 - Configure internal service communication:
-  - `quay_db_host: localhost` (default, for single-node deployment)
-  - `quay_redis_host: localhost` (default, for single-node deployment)
-  - **Note**: Only change these if PostgreSQL/Redis are on different hosts
+  - `quay_db_host: host.containers.internal` (default, for single-node Podman deployment)
+  - `quay_redis_host: host.containers.internal` (default, for single-node Podman deployment)
+  - **Note**: Uses special DNS name to allow containers to access host services. Only change if PostgreSQL/Redis are on different hosts
 - Choose distribution:
   - `quay_distribution: project` (open source, default)
   - `quay_distribution: redhat` (enterprise, requires credentials)
@@ -685,10 +685,10 @@ The playbook follows this execution order:
   - Automatically selects correct container images from `quay_distribution_images` mapping in `quay.yml`
 
 **Internal Service Communication** (`inventory/group_vars/all/main.yml`):
-- `quay_db_host`: `localhost` (default) - PostgreSQL connection host for Quay and Clair containers
-- `quay_redis_host`: `localhost` (default) - Redis connection host for Quay container
-- **Important**: These defaults work for single-node deployments where all containers run on the same host
-- **When to change**: Only modify if deploying PostgreSQL/Redis on separate hosts (not standard for this PoC)
+- `quay_db_host`: `host.containers.internal` (default) - PostgreSQL connection host for Quay and Clair containers
+- `quay_redis_host`: `host.containers.internal` (default) - Redis connection host for Quay container
+- **Important**: Uses Podman's special DNS name to allow containers to access host services. This works for single-node deployments where all containers run on the same host
+- **When to change**: Use actual host IP (e.g., `192.168.1.100`) or hostname for multi-node deployments or if `host.containers.internal` is not available
 
 **Component Toggles**:
 - `quay_enable_clair`: `true`/`false` - Controls Clair deployment
@@ -1019,6 +1019,15 @@ Provided mode:
   ```
 - **Credential check**: Ensure `vault_postgresql_password` matches in vault and is correctly referenced
 
+**⚠️ "database already exists" Error in PostgreSQL Logs**
+- **Cause**: Non-idempotent database creation task running on existing database
+- **Error**: `ERROR: database "clair" already exists` in PostgreSQL container logs
+- **Impact**: Cosmetic - error appears in logs but doesn't break functionality
+- **Fix**: This has been resolved in recent updates by checking database existence before creation
+  - The playbook now checks if the Clair database exists before attempting to create it
+  - If you see this error, update to the latest version of the postgresql role
+- **Reference**: `roles/postgresql/tasks/main.yml:108-129` for database creation with existence check
+
 **❌ "unable to open database file" SQLite Error in Quay**
 - **Cause**: Quay cannot connect to PostgreSQL and falls back to SQLite (which fails)
 - **Error**: `sqlite3.OperationalError: unable to open database file` in Quay container logs
@@ -1028,14 +1037,31 @@ Provided mode:
   # Check Quay configuration
   sudo podman exec quay cat /conf/stack/config.yaml | grep DB_URI
 
-  # Should show: postgresql://...@localhost:5432/quay (for single-node deployment)
+  # Should show: postgresql://...@host.containers.internal:5432/quay (for single-node deployment)
   # If it shows a different hostname that's unreachable, that's the problem
   ```
 - **Fix**:
-  1. Verify `quay_db_host: localhost` is set in `inventory/group_vars/all/main.yml`
+  1. Verify `quay_db_host: host.containers.internal` is set in `inventory/group_vars/all/main.yml`
   2. If using a custom hostname, ensure it resolves correctly from within the Quay container
   3. Redeploy Quay role: `ansible-playbook playbooks/site.yml --tags quay --ask-vault-pass`
-- **Reference**: `inventory/group_vars/all/main.yml:40-41` for database host configuration
+- **Reference**: `inventory/group_vars/all/main.yml:41-42` for database host configuration
+
+**❌ "Redis connection refused" Error in Quay**
+- **Cause**: Quay container cannot connect to Redis on the host
+- **Error**: `Could not connect to Redis with values provided in BUILDLOGS_REDIS. Error: dial tcp [::1]:6379: connect: connection refused` in Quay container logs
+- **Root cause**: Using `localhost` instead of `host.containers.internal` for Redis connection
+- **Diagnosis**:
+  ```bash
+  # Check Quay configuration
+  sudo podman exec quay cat /conf/stack/config.yaml | grep -A 3 BUILDLOGS_REDIS
+
+  # Should show: host: host.containers.internal (not localhost or [::1])
+  ```
+- **Fix**:
+  1. Verify `quay_redis_host: host.containers.internal` is set in `inventory/group_vars/all/main.yml`
+  2. Redeploy Quay role: `ansible-playbook playbooks/site.yml --tags quay --ask-vault-pass`
+- **Explanation**: In Podman, `localhost` inside a container refers to the container itself, not the host machine. Use `host.containers.internal` to access host services
+- **Reference**: `inventory/group_vars/all/main.yml:41-42` for Redis host configuration
 
 ### SSL/TLS Issues
 

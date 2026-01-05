@@ -105,16 +105,28 @@
   changed_when: "'CREATE EXTENSION' in postgresql_trgm_result.stdout"
   failed_when: postgresql_trgm_result.rc != 0 and 'already exists' not in postgresql_trgm_result.stderr
 
-- name: Create Clair database (if Clair enabled)
+- name: Check if Clair database exists
+  ansible.builtin.command:
+    cmd: >
+      podman exec {{ postgresql_container_name }}
+      psql -U {{ postgresql_user }} -d postgres -tAc
+      "SELECT 1 FROM pg_database WHERE datname='{{ clair_postgresql_database }}';"
+  register: postgresql_clair_db_check
+  changed_when: false
+  failed_when: false
+  when: quay_enable_clair | bool
+
+- name: Create Clair database (if Clair enabled and doesn't exist)
   ansible.builtin.command:
     cmd: >
       podman exec {{ postgresql_container_name }}
       psql -U {{ postgresql_user }} -d postgres
       -c "CREATE DATABASE {{ clair_postgresql_database }};"
   register: postgresql_clair_db_result
-  changed_when: "'CREATE DATABASE' in postgresql_clair_db_result.stdout"
-  failed_when: postgresql_clair_db_result.rc != 0 and 'already exists' not in postgresql_clair_db_result.stderr
-  when: quay_enable_clair | bool
+  changed_when: postgresql_clair_db_result.rc == 0
+  when:
+    - quay_enable_clair | bool
+    - postgresql_clair_db_check.stdout != '1'
 
 - name: Generate systemd unit file for PostgreSQL container
   ansible.builtin.command:

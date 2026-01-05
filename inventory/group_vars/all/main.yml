@@ -35,10 +35,11 @@ quay_https_port: 443
 
 # Internal Service Communication
 # -------------------------------
-# Host for database and Redis connections from Quay container
-# Use 'localhost' for single-node deployment, or set to actual host IP/hostname
-quay_db_host: localhost
-quay_redis_host: localhost
+# Host for database and Redis connections from Quay and Clair containers
+# Use 'host.containers.internal' for single-node Podman deployment (allows containers to access host services)
+# Alternatives: actual host IP (e.g., 192.168.1.100) or hostname for multi-node deployments
+quay_db_host: host.containers.internal
+quay_redis_host: host.containers.internal
 
 # Superuser Configuration
 # -----------------------
