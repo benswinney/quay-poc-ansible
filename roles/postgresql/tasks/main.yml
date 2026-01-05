@@ -139,10 +139,11 @@
   changed_when: postgresql_systemd_result.rc == 0
   failed_when: false
 
-- name: Enable PostgreSQL systemd service
+- name: Enable and start PostgreSQL systemd service
   ansible.builtin.systemd:
     name: "container-{{ postgresql_container_name }}.service"
     enabled: true
+    state: started
     daemon_reload: true
   when: postgresql_systemd_result.rc == 0
 

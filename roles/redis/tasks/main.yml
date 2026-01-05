@@ -58,10 +58,11 @@
   changed_when: redis_systemd_result.rc == 0
   failed_when: false
 
-- name: Enable Redis systemd service
+- name: Enable and start Redis systemd service
   ansible.builtin.systemd:
     name: "container-{{ redis_container_name }}.service"
     enabled: true
+    state: started
     daemon_reload: true
   when: redis_systemd_result.rc == 0
 

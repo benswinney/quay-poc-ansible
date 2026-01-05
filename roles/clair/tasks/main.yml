@@ -92,10 +92,11 @@
   changed_when: clair_systemd_result.rc == 0
   failed_when: false
 
-- name: Enable Clair systemd service
+- name: Enable and start Clair systemd service
   ansible.builtin.systemd:
     name: "container-{{ clair_container_name }}.service"
     enabled: true
+    state: started
     daemon_reload: true
   when: clair_systemd_result.rc == 0
 

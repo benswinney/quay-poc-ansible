@@ -110,10 +110,11 @@
   changed_when: quay_systemd_result.rc == 0
   failed_when: false
 
-- name: Enable Quay systemd service
+- name: Enable and start Quay systemd service
   ansible.builtin.systemd:
     name: "container-{{ quay_container_name }}.service"
     enabled: true
+    state: started
     daemon_reload: true
   when: quay_systemd_result.rc == 0
 
