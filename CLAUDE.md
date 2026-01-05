@@ -1019,6 +1019,15 @@ Provided mode:
   ```
 - **Credential check**: Ensure `vault_postgresql_password` matches in vault and is correctly referenced
 
+**⚠️ "database already exists" Error in PostgreSQL Logs**
+- **Cause**: Non-idempotent database creation task running on existing database
+- **Error**: `ERROR: database "clair" already exists` in PostgreSQL container logs
+- **Impact**: Cosmetic - error appears in logs but doesn't break functionality
+- **Fix**: This has been resolved in recent updates by checking database existence before creation
+  - The playbook now checks if the Clair database exists before attempting to create it
+  - If you see this error, update to the latest version of the postgresql role
+- **Reference**: `roles/postgresql/tasks/main.yml:108-129` for database creation with existence check
+
 **❌ "unable to open database file" SQLite Error in Quay**
 - **Cause**: Quay cannot connect to PostgreSQL and falls back to SQLite (which fails)
 - **Error**: `sqlite3.OperationalError: unable to open database file` in Quay container logs
