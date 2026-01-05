@@ -26,12 +26,39 @@
     name: "{{ postgresql_container_name }}"
   register: postgresql_container_check
 
+# Check for dependent containers before PostgreSQL operations
+- name: Check if dependent containers exist
+  containers.podman.podman_container_info:
+    name: "{{ item }}"
+  register: dependent_containers_check
+  loop:
+    - "{{ quay_container_name }}"
+    - "{{ clair_container_name }}"
+    - "{{ mirror_container_name }}"
+  failed_when: false
+  changed_when: false
+
+# Stop dependent containers if they exist and are running
+# This prevents "container has dependent containers" errors during PostgreSQL updates
+- name: Stop dependent containers before PostgreSQL operations
+  containers.podman.podman_container:
+    name: "{{ item.item }}"
+    state: stopped
+  loop: "{{ dependent_containers_check.results }}"
+  when:
+    - item.containers is defined
+    - item.containers | length > 0
+    - item.containers[0].State.Running | default(false)
+  failed_when: false
+  changed_when: false
+
 - name: Create and start PostgreSQL container
   containers.podman.podman_container:
     name: "{{ postgresql_container_name }}"
     image: "{{ postgresql_image }}"
     state: started
     recreate: false
+    force: true
     ports:
       - "{{ postgresql_port }}:5432"
     env:
